@@ -8,11 +8,11 @@
 #include "ellipsoid.h"
 
 
-extern "C" void dgeev_(char *jobvl, char *jobvr, int *N, double *A, int *lda, double *wr, double *wi, double *vl, int *ldvl, double *vr, int *ldvr, double *work, int *lwork, int *info);
+extern void dgeev_(char *jobvl, char *jobvr, int *N, double *A, int *lda, double *wr, double *wi, double *vl, int *ldvl, double *vr, int *ldvr, double *work, int *lwork, int *info);
 
-extern "C" void dgetrs_(char *trans, int *n, int *nrhs, double *A, int *lda, int *ipiv, double *B, int *ldb, int *info);
+extern void dgetrs_(char *trans, int *n, int *nrhs, double *A, int *lda, int *ipiv, double *B, int *ldb, int *info);
 
-extern "C" void dgetrf_(int *M, int *N, double *A, int *lda, int *ipiv, int *info);
+extern void dgetrf_(int *M, int *N, double *A, int *lda, int *ipiv, int *info);
 
 static double max(double a, double b) {
   if( a > b)

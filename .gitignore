@@ -27,7 +27,13 @@
 *.i*86
 *.x86_64
 *.hex
+main
+ellSolv
 
 # Debug files
 *.dSYM/
 *.su
+
+# Emacs
+*~
+.#*
