@@ -3,15 +3,12 @@
 #include <stdlib.h>
 #include <time.h>
 #include <mpfr.h>
+#include <petsc.h>
 #include "ellipsoid.h"
 #include "sphere.h"
 #include "constants.h"
 #include "ellSolv.h"
 #include "sphSolv.h"
-#include <gsl/gsl_sf_legendre.h>
-
-//#include "legendre_polynomial.h"
-
 
 
 void runTest1() {
@@ -102,8 +99,8 @@ void runTest1() {
 
 
   //set up problem
-  SProblem sProblem = {.positions = sPoints, .charges = charges, .nCharges = nCharges, .e1 = 1.0, .e2 = 1.0, .b = 3.0};
-  Problem  eProblem = {.positions = ePoints, .charges = charges, .nCharges = nCharges, .e1 = 1.0, .e2 = 1.0, .e = &e};
+  SProblem sProblem = {.positions = sPoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .b = 3.0};
+  Problem  eProblem = {.positions = ePoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .e = &e};
   
  
   double *ssolution = (double*) malloc(sizeof(double)*nPoints);
@@ -161,8 +158,7 @@ void runTest2() {
   double zb = 0.1;
   double xh = (xb - xa)/(nx-1);
   double yh = (yb - ya)/(ny-1);
-  //double zh = (zb - za)/(nz-1);
-  double zh = 0;
+  double zh = (zb - za)/(nz-1); //zh = 0
 
 
   double charges[nCharges];
@@ -1070,20 +1066,6 @@ void test4sphere()
 }
 
 
-void testLegendre()
-{
-  int Nmax = 33;
-  double xval = .564;
-  double lterm;
-  for(int n=0; n<Nmax; ++n) {
-    for(int m=-n; m<=n; ++m) {
-      lterm = gsl_sf_legendre_Plm(n, abs(m), xval);
-      printf("%d,%d: %15.15f\n", n, m, lterm);
-    }
-  }
-}
-
-
 int runArg()
 {
   char buff[64];
@@ -1185,14 +1167,22 @@ int runArg()
   return 0;
 }
 
+#undef __FUNCT__
+#define __FUNCT__
+int main( int argc, char **argv ) {
 
-int main(){
+  PetscErrorCode ierr;
 
+  //initialize Petsc
+  ierr = PetscInitialize(&argc, &argv, NULL, NULL); CHKERRQ(ierr);
+  ierr = PetscLogDefaultBegin(); CHKERRQ(ierr);  
+
+  
   //testSphericalCoordinates();
   //runTest1();
   //testLegendre();
   //runTest4();
   //test4sphere();
   runArg();
-  return 0;
+  ierr = PetscFinalize(); CHKERRQ(ierr);
 }

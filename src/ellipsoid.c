@@ -297,12 +297,18 @@ void getCoefsL(EllipsoidalSystem *s, int n, double **coefs) {
   } 
     
 }
+
+
 void getCoefsM(EllipsoidalSystem *s, int n, double **coefs) {
   int wow = 1;
+  wow = wow/2;
 }
 void getCoefsN(EllipsoidalSystem *s, int n, double **coefs) {
   int wow = 1;
+  wow = wow/2;
 }
+
+
 
 double calcLame2(EllipsoidalSystem *s, int n, int p, double l) {
   char t = getLameTypeT(n, p);
@@ -365,30 +371,32 @@ void cartesianToEllipsoidal2(struct EllipsoidalSystem *e, struct Point *p) {
 
     double Areal  = -(c/2.0) + (a*b/6.0) - (a*a*a/27.0);
     double Aimag  = sqrt(-1.0*((a*a*a*c + b*b*b - a*a*b*b)/27.0 + (9.0*c*c - 6.0*a*b*c + a*a*b*b)/36.0));
-    double Breal  = Areal;
-    double Bimag  = -Aimag;
     
     double r = sqrt(Areal*Areal + Aimag*Aimag);
     double Atheta = atan2(Aimag, Areal);
-    double Btheta = atan2(Bimag, Breal);
-    double Aroot1, Aroot2, Broot1, Broot2;
-    double ArootReal, ArootImag, BrootReal, BrootImag;
+
+    //Not sure what I was doing with Broot1, Broot2. Commented out
+    double Aroot1, Aroot2;//, Broot1, Broot2;
+    double ArootReal, ArootImag; //, BrootReal, BrootImag;
     int Ayes = 0;
 
     for(int k=0; k<3; ++k) {
       Aroot1 = cbrt(r)*cos((Atheta + 2.0*k*M_PI)/3.0);
       Aroot2 = cbrt(r)*sin((Atheta + 2.0*k*M_PI)/3.0);
-      Broot1 = cbrt(r)*cos((Btheta + 2.0*k*M_PI)/3.0);
-      Broot2 = cbrt(r)*sin((Btheta + 2.0*k*M_PI)/3.0);
+      //what is this jibber jabber
+      //Broot1 = cbrt(r)*cos((Btheta + 2.0*k*M_PI)/3.0);
+      //Broot2 = cbrt(r)*sin((Btheta + 2.0*k*M_PI)/3.0);
       if(Aroot1 >= 0 && Aroot2 >= 0) {
 	ArootReal = Aroot1;
 	ArootImag = Aroot2;
 	Ayes = 1;
       }
-      if(Broot1 >= 0 && Broot2 >= 0) {
-	BrootReal = Broot1;
-	BrootImag = Broot2;
-      }
+      //Not sure what this is for
+      //
+      //if(Broot1 >= 0 && Broot2 >= 0) {
+      //BrootReal = Broot1;
+      //BrootImag = Broot2;
+      //}
       //printf("A,Ai,B,Bi: %15.15f, %15.15f, %15.15f, %15.15f\n", Aroot1, Aroot2, Broot1, Broot2);
     }
     if(Ayes == 0)
@@ -665,7 +673,7 @@ void getLameCoefficientMatrix2(struct EllipsoidalSystem *s, char t, int n, int *
   //return vr;
 }
 
-double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size)
+double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int* const mat_size)
 {
   //For a given Lame type and ordr n, return the tridiagonal matrix
   //the size of the generated coefficient matrix is stored to mat_size
@@ -809,7 +817,8 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
   free(M);
   //printf("amazing\n");
   //printf("diggity\n");
-  //*mat_size = size_d;
+  if(mat_size != NULL)
+    *mat_size = size_d;
   //for(int k=0; k<(m+1); ++k)
   //b[k] = b[k]/(b[(m+1)-1]/pow(-e->h2,(m+1)-1));
   for(int i=0; i<size_d; ++i) {
@@ -838,16 +847,16 @@ void initRomainConstsToOrderN(EllipsoidalSystem *e, int N) {
   if(e->Rconsts != NULL)
     free(e->Rconsts);
   e->Rconsts = (double***) malloc(sizeof(double**)*(N+1));
-  int *mat_size;
+  //int* mat_size; *mat_size = 1;
   for(int n=0; n<=N; ++n) {
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
-    e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, mat_size);
+    e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
     //printf("wowze\n");
     if(n != 0) {
-      e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, mat_size);
-      e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, mat_size);
+      e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
+      e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
       if(n != 1) {
-	e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, mat_size);
+	e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
       }
     }
   }
@@ -868,7 +877,7 @@ double calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm, int sig
   char t = getLameTypeT(n, p);
   int tp = getLameTypeTp(n, p);
 
-  int bsize;
+
   //double *B = getLameCoefficientMatrix(e, t, n, &bsize);
   //printf("%c\n", t);
 
@@ -994,7 +1003,7 @@ double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int sign
   //P' = \sum^{m-1}_{k=0} c_k \Lambda^k where c_k = b_{k+1} (-2 (k+1) \frac{\lambda}{h^2}) 
   double Pder = b[m]*(-2*m*l/e->h2);
   free(b);
-  //free(B);
+  free(B);
   return psider*P + psi*Pder;
 }
 
@@ -1042,9 +1051,7 @@ double calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
 
   if(l < 0)
     l *= -1.0;
-  double k2 = e->k2;
-  double h2 = e->h2;
-  int digits = 14;
+  //int digits = 14;
   FuncInfo ctx = { e, n, p, signm, signn};
   double integral;
   mpfr_t *a = &(e->tempa);
@@ -1164,23 +1171,12 @@ double calcNormalization(EllipsoidalSystem *e, int n, int p)
   mpfr_t *mpfrzero = &(e->mpfrzero);
   mpfr_t *mpfrone  = &(e->mpfrone);
   
-  clock_t start, diff;
-  int msec;
-  start = clock();
   err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals, &ctx1);
-  diff = clock() - start;
-  msec = diff * 1000 / CLOCKS_PER_SEC;
-  //printf("first integral took %d seconds and %d milliseconds\n", msec/1000, msec%1000);
-  start = clock();
+
   err[1] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals+1, &ctx2);
-  diff = clock()-start;
-  msec = diff*1000/CLOCKS_PER_SEC;
-  //printf("second integral took %d seconds and %d milliseconds\n", msec/1000, msec%1000);
-  start = clock();
+
   err[2] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+2, &ctx3);
-  diff = clock()-start;
-  msec = diff*1000/CLOCKS_PER_SEC;
-  //printf("third integral took %d seconds and %d milliseconds\n", msec/1000, msec%1000);
+
   err[3] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+3, &ctx4);
 
   return 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);

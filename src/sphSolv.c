@@ -98,7 +98,6 @@ void calcCnmFromEnm(int n, int m, double Enmrval, double Enmival, SProblem *prob
 
 double calcCoulombSpherical(SProblem *problem, int maxDeg, SPoint *r) {
   double val = 0;
-  double Enm;
   double e1 = problem->e1;
   double rad = r->x1;
   double theta = r->x2;
@@ -107,11 +106,8 @@ double calcCoulombSpherical(SProblem *problem, int maxDeg, SPoint *r) {
   double lterm;
   double Enmrterm, Enmiterm;
   double rterm, iterm;
-  double *legvals = (double*) malloc(sizeof(double)*(maxDeg*2 + 1));
 
   for(int n=0; n<=maxDeg; ++n) {    
-    //printf("cos(theta) = %15.15f\n", cos(theta));
-    //legendre2(n, 1, cos(theta), legvals);
     radpow *= rad;
     for(int m=-n; m<=n; ++m) {
       calcEnm(problem->positions, problem->charges, problem->nCharges, n, m, &Enmrterm, &Enmiterm);
@@ -135,8 +131,6 @@ double calcCoulombSpherical(SProblem *problem, int maxDeg, SPoint *r) {
 
 
 double calcCoulombSphericalGrid(SProblem *problem, int maxDeg, SPoint *r, int nPoints, double *solution) {
-  double val = 0;
-  double Enm;
   double e1 = problem->e1;
   
   double rad, theta, phi;
