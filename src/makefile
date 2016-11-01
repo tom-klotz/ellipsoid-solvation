@@ -1,5 +1,5 @@
 all:
-	gcc -O3 -g -o main ellipsoid.c testProblem.c -lm -lgmp -lmpfr -llapack -lblas -lgsl -lgslcblas
+	gcc -O3 -g -o main ellipsoid.c sphere.c ellSolv.c sphSolv.c testProblem.c -lm -lgmp -lmpfr -llapack -lblas -lgsl -lgslcblas
 test:
 	gcc -O3 -g -o main ellipsoid.c testProblem.c -lm -lgmp -lmpfr -llapack -lblas -lgsl -lgslcblas
 speed:
