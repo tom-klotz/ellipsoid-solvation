@@ -1,8 +1,6 @@
 #ifndef __ellipsoid
 #define __ellipsoid
 
-static double tol = 1e-12;
-
 //structs
 typedef struct EllipsoidalSystem {
   double a;

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <mpfr.h>
 #include "ellipsoid.h"
-#include "sphere.h"
+#include "../sphere/sphere.h"
 #include "ellSolv.h"
 
 

@@ -2,9 +2,9 @@ CLINKER=gcc
 
 CFLAGS = -I. -lm -lgmp -lmpfr -llapack -lblas -lgsl -lgslcblas
 
-SPH_OBJS = sphere.o sphSolv.o
+SPH_OBJS = sphere/sphere.o sphere/sphSolv.o
 
-ELL_OBJS = ellipsoid.o ellSolv.o
+ELL_OBJS = ellipsoid/ellipsoid.o ellipsoid/ellSolv.o
 
 
 ex1: ${SPH_OBJS} ${ELL_OBJS} testProblem.o

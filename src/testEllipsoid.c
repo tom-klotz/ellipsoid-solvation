@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ellipsoid.h"
+#include "ellipsoid/ellipsoid.h"
+
+static double tol = 1e-12;
 
 
 int testCoordinateTransform()
@@ -15,7 +17,6 @@ int testCoordinateTransform()
   EllipsoidalSystem e;
   initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
   
-  Point temp;
   double relErrorX, relErrorY, relErrorZ;
 
   //loop over octants
@@ -371,9 +372,8 @@ int compareIntegration()
 
   double integralMPFR, integralMidpoint;
 
-  int err1, err2;
-  err1  = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
-  err2 = integrateMidpoint((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
+  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
+  integrateMidpoint((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
 
   printf("ze MPFR integral is: %15.15f\n", integralMPFR);
   printf("ze Midpoint integral is: %15.15f\n", integralMidpoint);

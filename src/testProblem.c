@@ -4,11 +4,12 @@
 #include <time.h>
 #include <mpfr.h>
 #include <petsc.h>
-#include "ellipsoid.h"
-#include "sphere.h"
+
+#include "ellipsoid/ellipsoid.h"
+#include "ellipsoid/ellSolv.h"
+#include "sphere/sphere.h"
+#include "sphere/sphSolv.h"
 #include "constants.h"
-#include "ellSolv.h"
-#include "sphSolv.h"
 
 
 void runTest1() {
@@ -307,8 +308,7 @@ void runTest3() {
   double zb = 0.1;
   double xh = (xb - xa)/(nx-1);
   double yh = (yb - ya)/(ny-1);
-  //double zh = (zb - za)/(nz-1);
-  double zh = 0;
+  double zh = (zb - za)/(nz-1); //zh = 0
 
 
   double charges[nCharges];
@@ -460,9 +460,7 @@ void runTest4() {
   double zb = 0.1;
   double xh = (xb - xa)/(nx-1);
   double yh = (yb - ya)/(ny-1);
-  //double zh = (zb - za)/(nz-1);
-  double zh = 0;
-
+  double zh = (zb - za)/(nz-1); //zh=0
 
   double charges[nCharges];
   for(int i=0; i<nCharges; ++i)
@@ -698,12 +696,11 @@ void test2() {
     printf("points[%d].x3 = %15.15f\n", i, points[i].x3);
   }
 
-  double charge = 1.0;
+
   //set up problem
   Problem problem = {.positions = points, .charges = charges, .nCharges = npoints, .e1 = 1.0, .e2 = 1.0, .e = &e};
 
 
-  int iter = 99;
   
   double approx = calcCoulomb(&problem, 15, &r);
 
@@ -732,24 +729,19 @@ void test2sphere() {
   charges[0] = 1.0;
   charges[1] = -1.0;
 
-
   double exact = 0;
   for(int i=0; i<npoints; i++)
     exact += charges[i]/sqrt((points[i].x1-r.x1)*(points[i].x1-r.x1) + (points[i].x2-r.x2)*(points[i].x2-r.x2) + (points[i].x3-r.x3)*(points[i].x3-r.x3));
 
   printf("the exact result is %15.15f\n", exact);
-
-
+  
   cartesianToSpherical(&r);
   for(int i=0; i<npoints; ++i)
     cartesianToSpherical(points+i);
 
-  
-
   printf("r.x1 = %15.15f\n", r.x1);
   printf("r.x2 = %15.15f\n", r.x2);
   printf("r.x3 = %15.15f\n", r.x3);
-
 
   for(int i=0; i<npoints; ++i) {
     printf("points[%d].x1 = %15.15f\n", i, points[i].x1);
@@ -758,21 +750,13 @@ void test2sphere() {
   }
 
   
-
-
-  double charge = 1.0;
   //set up problem
   SProblem problem = {.positions = points, .charges = charges, .nCharges = npoints, .e1 = 1.0, .e2 = 1.0};
 
-
   calcCoulombSpherical(&problem, 300, &r);
-  
-  //printf("\n\n\nPART 2 PART 2 PART 2 PART 2\n\n\n");
   
   //calcCoulombSpherical(&problem, 30, &r);
 
-  //speedTester(&problem, 10, &r);
-  //printf("norm for %d,%d: %8.8e\n", 25, 39, calcNormalization(&e, 25, 39));
 }
 
 void test3() {
@@ -841,7 +825,7 @@ void test3() {
   int msec;
   //calculate the coulomb potential
   start = clock();  
-  double ellSol = calcCoulomb(&problem, 32, &r);
+  double ellSol = calcCoulomb(&problem, 32, &r); ellSol *= 1.0;
   diff = clock() - start;
   msec = diff * 1000 / CLOCKS_PER_SEC;
   printf("The time for the solution to n=10 is %d seconds and %d milliseconds\n", msec/1000, msec%1000);
@@ -927,8 +911,7 @@ void test4sphere()
   
   double a = 3.0;
   double b = 2.0;
-  double c = 1.0;
-
+  //double c = 1.0;
 
   double gridXMin = -2.0*a;
   double gridXMax = fabs(gridXMin);
@@ -943,7 +926,6 @@ void test4sphere()
   const int xdim = 200;
   const int ydim = 200;
   const int dim  = xdim*ydim;
-
 
   //make grid of calculation points
   SPoint r = {.x1 = -2.0, .x2 = 3.5, .x3 = 0.0, .type = 'c'};
@@ -960,7 +942,6 @@ void test4sphere()
       grid[i*ydim + j].x3 = 0.0;
     }
   }
-
 
   //source charges
   SPoint chargePoints[nCharges];
@@ -981,8 +962,6 @@ void test4sphere()
       chargePoints[k].x3 = pert*pointsC;
       chargePoints[k].type = 'c';
   }
-
-
 
   //charges array, all set to 1
   double chargeValues[nCharges];
