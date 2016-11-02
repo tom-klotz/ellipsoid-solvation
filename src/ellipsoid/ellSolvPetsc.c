@@ -10,8 +10,8 @@
 
 
 #undef __FUNCT__
-#define __FUNCT__ "calcSolidHarmonic"
-PetscErrorCode calcSolidHarmonic(EllipsoidalSystem* e, PetscReal lambda, PetscReal mu, PetscReal nu, PetscInt n, PetscInt p, PetscReal *val)
+#define __FUNCT__ "CalcSolidHarmonic"
+PetscErrorCode CalcSolidHarmonic(EllipsoidalSystem* e, PetscReal lambda, PetscReal mu, PetscReal nu, PetscInt n, PetscInt p, PetscReal *val)
 {
   PetscInt signm = 1;
   PetscInt signn = 1;
@@ -32,12 +32,12 @@ PetscErrorCode calcSolidHarmonic(EllipsoidalSystem* e, PetscReal lambda, PetscRe
 }
 
 #undef __FUNCT__
-#define __FUNCT__ "calcSolidHarmonicVec"
+#define __FUNCT__ "CalcSolidHarmonicVec"
 /*
   ellPoints is ellPoints of size 3*nPoints containing ellipsoidal coordinates
   outputs solid harmonics to values of size nPoints
 */
-PetscErrorCode calcSolidHarmonicVec(EllipsoidalSystem* e, PetscInt nPoints, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
+PetscErrorCode CalcSolidHarmonicVec(EllipsoidalSystem* e, PetscInt nPoints, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
 {
   PetscErrorCode ierr;
   PetscInt signm = 1;
@@ -72,12 +72,58 @@ PetscErrorCode calcSolidHarmonicVec(EllipsoidalSystem* e, PetscInt nPoints, Vec 
 }
 
 #undef __FUNCT__
-#define __FUNCT__ "calcCoulombEllCoefs"
-PetscErrorCode calcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nCharges, Vec srcPoints, Vec srcCharges, PetscInt Nmax, Vec coefs)
+#define __FUNCT__ "CalcCoulombEllCoefs"
+/*
+  GnpVals should be uninitialized. I
+*/
+PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nPoints, Vec srcPoints, Vec srcCharges, PetscInt Nmax, Vec *GnpVals)
 {
   PetscErrorCode ierr;
+  PetscReal normConstant;
+  PetscReal Gnp;
+  PetscInt count;
+
+  Vec EnpVals;
+  const PetscScalar* EnpValsArray;
+  const PetscScalar* srcPointsArray;
+  const PetscScalar* srcChargesArray;
   PetscFunctionBegin;
 
   
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nPoints, &EnpVals);CHKERRQ(ierr);
+
+  count = 0;
+  for(PetscInt n=0; n<=Nmax; ++n) {
+    for(PetscInt p=0; p<2*n+1; ++p)
+      count++;
+  }
+  ierr = VecDestroy(GnpVals);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, GnpVals);CHKERRQ(ierr);
+  
+  ierr = VecGetArrayRead(srcCharges, &srcChargesArray);CHKERRQ(ierr);
+  count = 0;
+  for(PetscInt n=0; n<=Nmax; ++n) {
+    for(PetscInt p=0; p<2*n+1; ++p) {
+      normConstant = calcNormalization(e, n, p);
+      
+      ierr = CalcSolidHarmonicVec(e, nPoints, srcPoints, n, p, EnpVals);
+      
+      ierr = VecGetArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
+      ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
+      Gnp = 0;
+      for(PetscInt k=0; k<nPoints; ++k) {
+	Gnp += srcChargesArray[k]*EnpValsArray[k];
+      }
+      ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
+      ierr = VecRestoreArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
+      Gnp *= (4*M_PI)/((2.0*n+1.0)*normConstant);
+      ierr = VecSetValues(*GnpVals, 1, &count, &Gnp, INSERT_VALUES);CHKERRQ(ierr);
+      count++;
+    }
+  }
+  ierr = VecAssemblyBegin(*GnpVals);CHKERRQ(ierr); ierr = VecAssemblyEnd(*GnpVals);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(srcCharges, &srcChargesArray);CHKERRQ(ierr);
+
+  ierr = VecDestroy(&EnpVals); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

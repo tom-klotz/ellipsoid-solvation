@@ -1045,8 +1045,113 @@ void test4sphere()
 }
 
 #undef __FUNCT__
-#define __FUNCT__ "runArg"
-PetscErrorCode runArg()
+#define __FUNCT__ "RunArg"
+PetscErrorCode RunArg()
+{
+  PetscErrorCode ierr;
+  char buff[64];
+  int npts;
+  double a, b, c;
+  double *xyz;
+  double *chargeValues;
+  double *solution;
+  double freeEnergy;
+
+  PetscFunctionBegin;
+  
+  //constants
+  const double q     = ELECTRON_CHARGE;
+  const double Na    = AVOGADRO_NUMBER;
+  const double JperC = 4.184; /* Jouled/Calorie */
+  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/M_PI; /* kcal ang/mol */
+
+
+  FILE *fp = fopen("../../pointbem/src/ellData.txt", "r");
+  // READ NUMBER OF POINTS
+  fscanf(fp, "%s", buff); //skip "size: "
+  fscanf(fp, "%d", &npts);
+
+  //initialize local charges/coordinates arrays
+  xyz     = (double*) malloc(sizeof(double)*3*npts);
+  chargeValues = (double*) malloc(sizeof(double)*npts);
+  // READ A,B,C ELLIPSOID VALUES
+  fscanf(fp, "%s", buff); //skip "a: "
+  fscanf(fp, "%lf", &a); //read a value
+  fscanf(fp, "%s", buff); //skip "b: "
+  fscanf(fp, "%lf", &b); //read b value
+  fscanf(fp, "%s", buff); //skip "c: "
+  fscanf(fp, "%lf", &c);
+  // READ CHARGE X,Y,Z AND CHARGE DATA
+  for(int i=0; i<npts; ++i) {
+    fscanf(fp, "%lf", xyz+3*i+0); //read x coordinate
+    fscanf(fp, "%lf", xyz+3*i+1); //read y coordinate
+    fscanf(fp, "%lf", xyz+3*i+2); //read z coordinate
+    fscanf(fp, "%lf", chargeValues+i); //read charge
+    printf("%lf %lf %lf %lf\n", xyz[3*i+0], xyz[3*i+1], xyz[3*i+2], chargeValues[i]);
+  }
+  fclose(fp);
+
+
+  //initialize ellipsoidal system
+  EllipsoidalSystem e;
+  initEllipsoidalSystem(&e, a, b, c);
+  
+  //set charge positions and calculation points to be the same
+  Point *solPoints = (Point*) malloc(sizeof(Point)*npts);
+  Point *chargePoints = (Point*) malloc(sizeof(Point)*npts);
+  for(int i=0; i<npts; ++i) {
+    solPoints[i].x1 = xyz[3*i+0];
+    solPoints[i].x2 = xyz[3*i+1];
+    solPoints[i].x3 = xyz[3*i+2];
+    solPoints[i].type = 'c';
+    chargePoints[i] = solPoints[i];
+  }
+
+  //convert to ellipsoidal coordinates
+  for(int i=0; i<npts; ++i) {
+    cartesianToEllipsoidal(&e, solPoints+i);
+    cartesianToEllipsoidal(&e, chargePoints+i);
+  }
+  
+  //initialize ellipsoidal problem context
+  Problem prob;
+  prob.e = &e;
+  prob.positions = chargePoints;
+  prob.charges = chargeValues;
+  prob.nCharges = npts;
+  prob.e1 = 4.0;
+  prob.e2 = 80.0;
+  
+  //solution vector
+  solution = (double*) malloc(sizeof(double)*npts);
+  
+  //calculate potential on solPoints
+  calcCoulombEllipsoidalGrid(&prob, 10, solPoints, npts, solution);
+  printf("wow!\n");
+  for(int i=0; i<npts; ++i)
+    printf("solution[%d] = %15.15f\n", i, solution[i]);
+  for(int i=0; i<npts; ++i)
+    printf("chargeValues[%d] = %15.15f\n", i, chargeValues[i]);
+  
+  //calculate free energy
+  freeEnergy = 0;
+  for(int i=0; i<npts; ++i) {
+    freeEnergy += solution[i]*chargeValues[i];
+    printf("freeEnergy[%d] = %15.15f\n", i, freeEnergy*.5*cf);
+  }
+
+  
+  free(xyz);
+  free(chargeValues);
+  free(solPoints);
+  free(solution);
+  free(chargePoints);
+  PetscFunctionReturn(0);
+}
+
+#undef __FUNCT__
+#define __FUNCT__ "RunArgTester"
+PetscErrorCode RunArgTester()
 {
   PetscErrorCode ierr;
   char buff[64];
@@ -1114,7 +1219,7 @@ PetscErrorCode runArg()
   //convert to ellipsoidal coordinates
   for(int i=0; i<npts; ++i) {
     cartesianToEllipsoidal(&e, solPoints+i);
-    ierr = calcSolidHarmonic(&e, solPoints[i].x1, solPoints[i].x2, solPoints[i].x3, 2, 3, valsbefArray+i); //testing
+    ierr = CalcSolidHarmonic(&e, solPoints[i].x1, solPoints[i].x2, solPoints[i].x3, 2, 3, valsbefArray+i); //testing
     cartesianToEllipsoidal(&e, chargePoints+i);
   }
   ierr = VecRestoreArray(valsbef, &valsbefArray); CHKERRQ(ierr); //testing
@@ -1129,8 +1234,7 @@ PetscErrorCode runArg()
   }
   ierr = VecRestoreArray(ellPoints, &ellPointsArray); CHKERRQ(ierr); //testing
   ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &vals); CHKERRQ(ierr); //testing
-  ierr = calcSolidHarmonicVec(&e, npts, ellPoints, 2, 3, vals); //testing
-
+  ierr = CalcSolidHarmonicVec(&e, npts, ellPoints, 2, 3, vals); //testing
   PetscReal diff, val1, val2; //testing
   for(PetscInt i=0; i<npts; ++i) { //testing
     ierr = VecGetValues(vals, 1, &i, &val1); CHKERRQ(ierr); //testing
@@ -1138,6 +1242,45 @@ PetscErrorCode runArg()
     diff = PetscAbsReal(val1 - val2); //testing
     printf("diff: %3.3e\n", diff); //testing
   }
+
+  /* ---------------------------- */
+  /* NOW WE TEST THE Gnp FUNCTION */
+  /* ---------------------------- */
+  PetscInt NMAX = 5;
+  PetscInt count = 0;
+
+  for(int n=0; n<=NMAX; ++n) {
+    for(int p=0; p<2*n+1; ++p)
+      count++;
+  }
+  Vec srcCharges, GnpVals, GnpValsOld;
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &srcCharges);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &GnpValsOld);CHKERRQ(ierr); //testing
+  for(PetscInt i=0; i<npts; ++i)
+    ierr = VecSetValues(srcCharges, 1, &i, chargeValues+i, INSERT_VALUES);CHKERRQ(ierr); //testing
+  ierr = VecAssemblyBegin(srcCharges);CHKERRQ(ierr); ierr = VecAssemblyEnd(srcCharges);CHKERRQ(ierr); //testing
+
+  //WOULD ACTUALLY USE CHARGE POINTS, NOT TARGET POINTS
+  //Calculate values with new function
+  ierr = CalcCoulombEllCoefs(&e, npts, ellPoints, srcCharges, NMAX, &GnpVals);CHKERRQ(ierr); //testing
+
+  //Calculate values with old function
+  PetscReal GnpOld;
+  count = 0;
+  for(PetscInt n=0; n<=NMAX; ++n) {
+    for(PetscInt p=0; p<2*n+1; ++p) {
+      GnpOld = calcGnp(&e, chargePoints, chargeValues, npts, n, p);
+      ierr = VecSetValues(GnpValsOld, 1, &count, &GnpOld, INSERT_VALUES);CHKERRQ(ierr);
+      count++;
+    }
+  }
+  ierr = VecAssemblyBegin(GnpValsOld);CHKERRQ(ierr); ierr = VecAssemblyEnd(GnpValsOld);CHKERRQ(ierr);
+
+  printf("\n--------------------------\nNEW FUNC\n-------------------\n");
+  ierr = VecView(GnpVals, PETSC_VIEWER_STDOUT_SELF);
+  printf("\n--------------------------\nOLD FUNC\n-------------------\n");
+  ierr = VecView(GnpValsOld, PETSC_VIEWER_STDOUT_SELF);
+
   
   //initialize ellipsoidal problem context
   Problem prob;
@@ -1191,6 +1334,7 @@ int main( int argc, char **argv ) {
   //testLegendre();
   //runTest4();
   //test4sphere();
-  runArg();
+  //RunArg();
+  ierr = RunArgTester(); CHKERRQ(ierr);
   ierr = PetscFinalize(); CHKERRQ(ierr);
 }
