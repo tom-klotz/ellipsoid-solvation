@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
+#include <petsc.h>
 #include "ellipsoid.h"
 #include "../sphere/sphere.h"
 #include "ellSolv.h"

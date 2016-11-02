@@ -4,7 +4,7 @@ CFLAGS = -I. -lm -lgmp -lmpfr -llapack -lblas -lgsl -lgslcblas
 
 SPH_OBJS = sphere/sphere.o sphere/sphSolv.o
 
-ELL_OBJS = ellipsoid/ellipsoid.o ellipsoid/ellSolv.o
+ELL_OBJS = ellipsoid/ellipsoid.o ellipsoid/ellSolv.o ellipsoid/ellSolvPetsc.o
 
 
 ex1: ${SPH_OBJS} ${ELL_OBJS} testProblem.o

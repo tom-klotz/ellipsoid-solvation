@@ -1044,9 +1044,11 @@ void test4sphere()
   fclose(fp);
 }
 
-
-int runArg()
+#undef __FUNCT__
+#define __FUNCT__ "runArg"
+PetscErrorCode runArg()
 {
+  PetscErrorCode ierr;
   char buff[64];
   int npts;
   double a, b, c;
@@ -1055,6 +1057,8 @@ int runArg()
   double *solution;
   double freeEnergy;
 
+  PetscFunctionBegin;
+  
   //constants
   const double q     = ELECTRON_CHARGE;
   const double Na    = AVOGADRO_NUMBER;
@@ -1102,14 +1106,39 @@ int runArg()
     solPoints[i].type = 'c';
     chargePoints[i] = solPoints[i];
   }
-  
+
+  Vec valsbef; //testing
+  PetscScalar* valsbefArray; //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &valsbef); CHKERRQ(ierr); //testing
+  ierr = VecGetArray(valsbef, &valsbefArray); CHKERRQ(ierr); //testing
   //convert to ellipsoidal coordinates
   for(int i=0; i<npts; ++i) {
     cartesianToEllipsoidal(&e, solPoints+i);
+    ierr = calcSolidHarmonic(&e, solPoints[i].x1, solPoints[i].x2, solPoints[i].x3, 2, 3, valsbefArray+i); //testing
     cartesianToEllipsoidal(&e, chargePoints+i);
   }
-  
+  ierr = VecRestoreArray(valsbef, &valsbefArray); CHKERRQ(ierr); //testing
+  Vec ellPoints, vals; //testing
+  PetscScalar* ellPointsArray; //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*npts, &ellPoints); CHKERRQ(ierr); //testing
+  ierr = VecGetArray(ellPoints, &ellPointsArray); CHKERRQ(ierr); //testing
+  for(PetscInt i=0; i<npts; ++i) { //testing
+    ellPointsArray[3*i+0] = solPoints[i].x1; //testing
+    ellPointsArray[3*i+1] = solPoints[i].x2; //testing
+    ellPointsArray[3*i+2] = solPoints[i].x3; //testing 
+  }
+  ierr = VecRestoreArray(ellPoints, &ellPointsArray); CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &vals); CHKERRQ(ierr); //testing
+  ierr = calcSolidHarmonicVec(&e, npts, ellPoints, 2, 3, vals); //testing
 
+  PetscReal diff, val1, val2; //testing
+  for(PetscInt i=0; i<npts; ++i) { //testing
+    ierr = VecGetValues(vals, 1, &i, &val1); CHKERRQ(ierr); //testing
+    ierr = VecGetValues(valsbef, 1, &i, &val2); CHKERRQ(ierr); //testing
+    diff = PetscAbsReal(val1 - val2); //testing
+    printf("diff: %3.3e\n", diff); //testing
+  }
+  
   //initialize ellipsoidal problem context
   Problem prob;
   prob.e = &e;
@@ -1143,7 +1172,7 @@ int runArg()
   free(solPoints);
   free(solution);
   free(chargePoints);
-  return 0;
+  PetscFunctionReturn(0);
 }
 
 #undef __FUNCT__

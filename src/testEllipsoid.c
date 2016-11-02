@@ -1,14 +1,10 @@
 #include <math.h>
 #include <stdio.h>
-#include <gmp.h>
 #include <mpfr.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ellipsoid/ellipsoid.h"
-
-static double tol = 1e-12;
-
 
 int testCoordinateTransform()
 {

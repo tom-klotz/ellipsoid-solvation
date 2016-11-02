@@ -2,13 +2,6 @@
 #define __ellSolv
 
 
-//spherical
-
-
-
-
-
-//ellipsoidal
 typedef struct Problem {
   Point *positions;
   double *charges;
@@ -18,6 +11,10 @@ typedef struct Problem {
   double e2; //permitivity outside
   EllipsoidalSystem *e;
 } Problem;
+
+PetscErrorCode calcSolidHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
+PetscErrorCode calcSolidHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode calcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, PetscInt, Vec);
 
 double calcEnp(EllipsoidalSystem*, Point*, int, int);
 double calcGnp(EllipsoidalSystem*, Point*, double*, int, int, int);
