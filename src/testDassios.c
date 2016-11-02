@@ -4,7 +4,7 @@
 #include <time.h>
 #include <gmp.h>
 #include <mpfr.h>
-#include "ellipsoid.h"
+#include "ellipsoid/ellipsoid.h"
 
 int main() {
   EllipsoidalSystem e;

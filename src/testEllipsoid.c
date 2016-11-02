@@ -7,7 +7,6 @@
 
 #include "ellipsoid/ellipsoid.h"
 
-static double tol = 1e-12;
 
 
 int testCoordinateTransform()
