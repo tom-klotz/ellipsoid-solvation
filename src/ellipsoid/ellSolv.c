@@ -85,7 +85,7 @@ void calcBnpAndCnpFromGnp(Problem *problem, int n, int p, double Gnp, double *Bn
   double first = (Fa/Ea)*(e1 - e2)/(e1*e2);
   first /= (1-(e1/e2)*((EaDer*Fa)/(FaDer*Ea)));
   *Bnp = first*Gnp;
-  
+
   //calc Cnp
   first = (e1/e2)*(EaDer/FaDer)*(*Bnp);
   first += (Gnp/e2);

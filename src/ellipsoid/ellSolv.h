@@ -12,9 +12,14 @@ typedef struct Problem {
   EllipsoidalSystem *e;
 } Problem;
 
-PetscErrorCode CalcSolidHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
-PetscErrorCode CalcSolidHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
+PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
 PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, PetscInt, Vec*);
+PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
+PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem*, PetscReal, PetscReal, PetscInt, Vec, Vec, Vec);
+
+
 
 double calcEnp(EllipsoidalSystem*, Point*, int, int);
 double calcGnp(EllipsoidalSystem*, Point*, double*, int, int, int);

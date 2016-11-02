@@ -1219,7 +1219,7 @@ PetscErrorCode RunArgTester()
   //convert to ellipsoidal coordinates
   for(int i=0; i<npts; ++i) {
     cartesianToEllipsoidal(&e, solPoints+i);
-    ierr = CalcSolidHarmonic(&e, solPoints[i].x1, solPoints[i].x2, solPoints[i].x3, 2, 3, valsbefArray+i); //testing
+    ierr = CalcSolidInteriorHarmonic(&e, solPoints[i].x1, solPoints[i].x2, solPoints[i].x3, 2, 3, valsbefArray+i); //testing
     cartesianToEllipsoidal(&e, chargePoints+i);
   }
   ierr = VecRestoreArray(valsbef, &valsbefArray); CHKERRQ(ierr); //testing
@@ -1234,54 +1234,16 @@ PetscErrorCode RunArgTester()
   }
   ierr = VecRestoreArray(ellPoints, &ellPointsArray); CHKERRQ(ierr); //testing
   ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &vals); CHKERRQ(ierr); //testing
-  ierr = CalcSolidHarmonicVec(&e, npts, ellPoints, 2, 3, vals); //testing
+  ierr = CalcSolidInteriorHarmonicVec(&e, npts, ellPoints, 2, 3, vals); //testing
   PetscReal diff, val1, val2; //testing
+  diff = 0;
   for(PetscInt i=0; i<npts; ++i) { //testing
     ierr = VecGetValues(vals, 1, &i, &val1); CHKERRQ(ierr); //testing
     ierr = VecGetValues(valsbef, 1, &i, &val2); CHKERRQ(ierr); //testing
-    diff = PetscAbsReal(val1 - val2); //testing
-    printf("diff: %3.3e\n", diff); //testing
+    diff += PetscSqrtReal(PetscAbsReal(val1 - val2)); //testing
   }
+  printf("Solid Harmonic Error: %3.3e\n", diff); //testing
 
-  /* ---------------------------- */
-  /* NOW WE TEST THE Gnp FUNCTION */
-  /* ---------------------------- */
-  PetscInt NMAX = 5;
-  PetscInt count = 0;
-
-  for(int n=0; n<=NMAX; ++n) {
-    for(int p=0; p<2*n+1; ++p)
-      count++;
-  }
-  Vec srcCharges, GnpVals, GnpValsOld;
-  ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &srcCharges);CHKERRQ(ierr); //testing
-  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &GnpValsOld);CHKERRQ(ierr); //testing
-  for(PetscInt i=0; i<npts; ++i)
-    ierr = VecSetValues(srcCharges, 1, &i, chargeValues+i, INSERT_VALUES);CHKERRQ(ierr); //testing
-  ierr = VecAssemblyBegin(srcCharges);CHKERRQ(ierr); ierr = VecAssemblyEnd(srcCharges);CHKERRQ(ierr); //testing
-
-  //WOULD ACTUALLY USE CHARGE POINTS, NOT TARGET POINTS
-  //Calculate values with new function
-  ierr = CalcCoulombEllCoefs(&e, npts, ellPoints, srcCharges, NMAX, &GnpVals);CHKERRQ(ierr); //testing
-
-  //Calculate values with old function
-  PetscReal GnpOld;
-  count = 0;
-  for(PetscInt n=0; n<=NMAX; ++n) {
-    for(PetscInt p=0; p<2*n+1; ++p) {
-      GnpOld = calcGnp(&e, chargePoints, chargeValues, npts, n, p);
-      ierr = VecSetValues(GnpValsOld, 1, &count, &GnpOld, INSERT_VALUES);CHKERRQ(ierr);
-      count++;
-    }
-  }
-  ierr = VecAssemblyBegin(GnpValsOld);CHKERRQ(ierr); ierr = VecAssemblyEnd(GnpValsOld);CHKERRQ(ierr);
-
-  printf("\n--------------------------\nNEW FUNC\n-------------------\n");
-  ierr = VecView(GnpVals, PETSC_VIEWER_STDOUT_SELF);
-  printf("\n--------------------------\nOLD FUNC\n-------------------\n");
-  ierr = VecView(GnpValsOld, PETSC_VIEWER_STDOUT_SELF);
-
-  
   //initialize ellipsoidal problem context
   Problem prob;
   prob.e = &e;
@@ -1290,6 +1252,65 @@ PetscErrorCode RunArgTester()
   prob.nCharges = npts;
   prob.e1 = 4.0;
   prob.e2 = 80.0;
+
+  
+  /* ---------------------------- */
+  /* NOW WE TEST THE Gnp FUNCTION */
+  /* ---------------------------- */
+  PetscInt NMAX = 5;
+  PetscInt count = 0;
+
+  for(PetscInt n=0; n<=NMAX; ++n) {
+    for(PetscInt p=0; p<2*n+1; ++p)
+      count++;
+  }
+  Vec srcCharges, GnpVals, GnpValsOld, BnpVals, BnpValsOld, CnpVals, CnpValsOld;
+  Vec errorV;
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npts, &srcCharges);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &GnpValsOld);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &BnpVals);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &BnpValsOld);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &CnpVals);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &CnpValsOld);CHKERRQ(ierr); //testing
+  ierr = VecCreateSeq(PETSC_COMM_SELF, count, &errorV);CHKERRQ(ierr); //testing
+  for(PetscInt i=0; i<npts; ++i)
+    ierr = VecSetValues(srcCharges, 1, &i, chargeValues+i, INSERT_VALUES);CHKERRQ(ierr); //testing
+  ierr = VecAssemblyBegin(srcCharges);CHKERRQ(ierr); ierr = VecAssemblyEnd(srcCharges);CHKERRQ(ierr); //testing
+
+  //WOULD ACTUALLY USE CHARGE POINTS, NOT TARGET POINTS
+  //Calculate values with new function
+  ierr = CalcCoulombEllCoefs(&e, npts, ellPoints, srcCharges, NMAX, &GnpVals);CHKERRQ(ierr); //testing
+  ierr = CalcReactAndExtCoefsFromCoulomb(&e, prob.e1, prob.e2, NMAX, GnpVals, BnpVals, CnpVals);CHKERRQ(ierr);
+
+  //Calculate values with old function
+  PetscReal GnpOld, BnpOld, CnpOld;
+  count = 0;
+  for(PetscInt n=0; n<=NMAX; ++n) {
+    for(PetscInt p=0; p<2*n+1; ++p) {
+      GnpOld = calcGnp(&e, chargePoints, chargeValues, npts, n, p);
+      calcBnpAndCnpFromGnp(&prob, n, p, GnpOld, &BnpOld, &CnpOld);
+      ierr = VecSetValues(GnpValsOld, 1, &count, &GnpOld, INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValues(BnpValsOld, 1, &count, &BnpOld, INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValues(CnpValsOld, 1, &count, &CnpOld, INSERT_VALUES);CHKERRQ(ierr);
+
+      count++;
+    }
+  }
+  ierr = VecAssemblyBegin(GnpValsOld);CHKERRQ(ierr); ierr = VecAssemblyEnd(GnpValsOld);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(BnpValsOld);CHKERRQ(ierr); ierr = VecAssemblyEnd(BnpValsOld);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(CnpValsOld);CHKERRQ(ierr); ierr = VecAssemblyEnd(CnpValsOld);CHKERRQ(ierr);
+
+  PetscReal GnpErr, BnpErr, CnpErr;
+  ierr = VecWAXPY(errorV, -1.0, GnpVals, GnpValsOld);CHKERRQ(ierr);
+  ierr = VecNorm(errorV, NORM_2, &GnpErr);
+  ierr = VecWAXPY(errorV, -1.0, BnpVals, BnpValsOld);CHKERRQ(ierr);
+  ierr = VecNorm(errorV, NORM_2, &BnpErr);
+  ierr = VecWAXPY(errorV, -1.0, CnpVals, CnpValsOld);CHKERRQ(ierr);
+  ierr = VecNorm(errorV, NORM_2, &CnpErr);
+  printf("GnpErr: %3.3e\n", GnpErr);
+  printf("BnpErr: %3.3e\n", BnpErr);
+  printf("CnpErr: %3.3e\n", CnpErr);
+  
   
   //solution vector
   solution = (double*) malloc(sizeof(double)*npts);
