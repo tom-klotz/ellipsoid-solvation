@@ -12,6 +12,7 @@ typedef struct Problem {
   EllipsoidalSystem *e;
 } Problem;
 
+PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscInt, Vec, Vec, PetscInt, Vec, PetscInt, Vec);
 PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
 PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
 PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, PetscInt, Vec*);

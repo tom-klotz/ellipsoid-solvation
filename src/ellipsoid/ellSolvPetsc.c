@@ -10,6 +10,108 @@
 
 
 #undef __FUNCT__
+#define __FUNCT__ "CalcSolvationPotential"
+PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscInt nTarget, Vec targetXYZ, PetscInt Nmax, Vec targetSol)
+{
+  PetscErrorCode ierr;
+  EllipsoidalSystem e;
+  PetscReal x, y, z;
+  PetscInt n, p;
+  PetscInt intPts, extPts;
+  Vec tarIntXYZ, tarExtXYZ;
+  PetscScalar *tarIntXYZArray, *tarExtXYZArray;
+  Vec tarIntEll, tarExtEll;
+  Vec srcEll, tarEll;
+  Vec coulCoefs, reactCoefs, extCoefs;
+  const PetscScalar *targetXYZArray;
+  PetscFunctionBegin;
+  
+  initEllipsoidalSystem(&e, a, b, c);
+
+  // calculate the number of interior and exterior points
+  ierr = VecGetArrayRead(targetXYZ, &targetXYZArray);CHKERRQ(ierr);
+  intPts = 0; extPts = 0;
+  for(int k=0; k < nTarget; ++k) {
+    x = targetXYZArray[3*k+0];
+    y = targetXYZArray[3*k+1];
+    z = targetXYZArray[3*k+2];
+    if((x*x)/(a*a) + (y*y)/(b*b) + (z*z)/(c*c) <= 1)
+      intPts++;
+    else
+      extPts++;
+  }
+  // init interior and exterior target point vectors
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*intPts, &tarIntXYZ);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*extPts, &tarExtXYZ);CHKERRQ(ierr);
+  // sort points into int and ext vectors
+  ierr = VecGetArray(tarIntXYZ, &tarIntXYZArray);CHKERRQ(ierr);
+  ierr = VecGetArray(tarExtXYZ, &tarExtXYZArray);CHKERRQ(ierr);
+  intPts = 0; extPts = 0;
+  for(int k=0; k < nTarget; ++k) {
+    x = targetXYZArray[3*k+0];
+    y = targetXYZArray[3*k+1];
+    z = targetXYZArray[3*k+2];
+    if((x*x)/(a*a) + (y*y)/(b*b) + (z*z)/(c*c) <= 1) {
+      tarIntXYZArray[3*intPts+0] = x;
+      tarIntXYZArray[3*intPts+1] = y;
+      tarIntXYZArray[3*intPts+2] = z;
+      intPts++;      
+    }
+    else {
+      tarExtXYZArray[3*extPts+0] = x;
+      tarExtXYZArray[3*extPts+1] = y;
+      tarExtXYZArray[3*extPts+2] = z;
+      extPts++;
+    }
+  }
+  ierr = VecRestoreArray(tarIntXYZ, &tarIntXYZArray);CHKERRQ(ierr);
+  ierr = VecRestoreArray(tarExtXYZ, &tarExtXYZArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(targetXYZ, &targetXYZArray);CHKERRQ(ierr);
+  
+  // create source ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nSource, &srcEll);CHKERRQ(ierr);
+  ierr = CartesianToEllipsoidalVec(&e, sourceXYZ, srcEll);CHKERRQ(ierr);
+  // create target ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nTarget, &tarEll);CHKERRQ(ierr);
+  ierr = CartesianToEllipsoidalVec(&e, targetXYZ, tarEll);CHKERRQ(ierr);
+  // create target interior ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*intPts, &tarIntEll);CHKERRQ(ierr);
+  ierr = CartesianToEllipsoidalVec(&e, tarIntXYZ, tarIntEll);CHKERRQ(ierr);
+  // create target exterior ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*extPts, &tarExtEll);CHKERRQ(ierr);
+  ierr = CartesianToEllipsoidalVec(&e, tarExtXYZ, tarExtEll);CHKERRQ(ierr);
+  
+  // calculate coulomb coefficients
+  ierr = CalcCoulombEllCoefs(&e, nSource, srcEll, sourceMag, Nmax, &coulCoefs);CHKERRQ(ierr);
+  // init reacCoefs, extCoefs from size of coulCoefs
+  ierr = VecDuplicate(coulCoefs, &reactCoefs);CHKERRQ(ierr);
+  ierr = VecDuplicate(coulCoefs, &extCoefs);CHKERRQ(ierr);
+  // calc reaction and exterior expansion coefs from coulomb coefs
+  ierr = CalcReactAndExtCoefsFromCoulomb(&e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
+
+  // loop
+  for(n=0; n <= Nmax; ++n) {
+    for(p=0; p < 2*n+1; ++p) {
+
+      // calc interior solid harmonics for interior points
+      
+      // calc exterior solid harmonics for exterior points
+      printf("p\n");
+      
+    }
+  }
+  
+  ierr = VecDestroy(&tarIntXYZ);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarExtXYZ);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarIntEll);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarExtEll);CHKERRQ(ierr);
+  ierr = VecDestroy(&srcEll);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarEll);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
 #define __FUNCT__ "CalcSolidInteriorHarmonic"
 PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem* e, PetscReal lambda, PetscReal mu, PetscReal nu, PetscInt n, PetscInt p, PetscReal *val)
 {
@@ -140,7 +242,7 @@ PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoin
 /*
   GnpVals should be uninitialized. I
 */
-PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nPoints, Vec srcPoints, Vec srcCharges, PetscInt Nmax, Vec* GnpVals)
+PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nSource, Vec srcPoints, Vec srcCharges, PetscInt Nmax, Vec* GnpVals)
 {
   PetscErrorCode ierr;
   PetscReal normConstant;
@@ -154,7 +256,7 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nPoints, Vec s
   PetscFunctionBegin;
 
   
-  ierr = VecCreateSeq(PETSC_COMM_SELF, nPoints, &EnpVals);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSource, &EnpVals);CHKERRQ(ierr);
 
   count = 0;
   for(PetscInt n=0; n<=Nmax; ++n) {
@@ -170,12 +272,12 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nPoints, Vec s
     for(PetscInt p=0; p<2*n+1; ++p) {
       normConstant = calcNormalization(e, n, p);
       
-      ierr = CalcSolidInteriorHarmonicVec(e, nPoints, srcPoints, n, p, EnpVals);
+      ierr = CalcSolidInteriorHarmonicVec(e, nSource, srcPoints, n, p, EnpVals);
       
       ierr = VecGetArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       Gnp = 0;
-      for(PetscInt k=0; k<nPoints; ++k) {
+      for(PetscInt k=0; k<nSource; ++k) {
 	Gnp += srcChargesArray[k]*EnpValsArray[k];
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
@@ -195,24 +297,24 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nPoints, Vec s
 
 #undef __FUNCT__
 #define __FUNCT__ "CalcReactAndExtCoefsFromCoulomb"
-PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem* e, PetscReal eps1, PetscReal eps2, PetscInt Nmax, Vec coulombCoefs, Vec reactionCoefs, Vec exteriorCoefs)
+PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem* e, PetscReal eps1, PetscReal eps2, PetscInt Nmax, Vec coulCoefs, Vec reacCoefs, Vec extCoefs)
 {
   PetscErrorCode ierr;
   PetscReal Ea   , Ia   , Fa;
   PetscReal EaDer, IaDer, FaDer;
   PetscReal Gnp, Bnp, Cnp;
   PetscReal temp;
-  const PetscScalar* coulombCoefsArray;
+  const PetscScalar* coulCoefsArray;
   PetscInt count;
   PetscFunctionBegin;
 
 
-  ierr = VecGetArrayRead(coulombCoefs, &coulombCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
   count = 0;
   for(PetscInt n=0; n<=Nmax; ++n) {
     for(PetscInt p=0; p<2*n+1; ++p) {
 
-      Gnp = coulombCoefsArray[count];
+      Gnp = coulCoefsArray[count];
       
       Ea    = calcLame(e, n, p, e->a, 1, 1);
       Ia    = calcI   (e, n, p, e->a, 1, 1);
@@ -228,18 +330,18 @@ PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem* e, PetscReal e
       Cnp = (eps1/eps2)*(EaDer/FaDer)*Bnp;
       Cnp += (Gnp/eps2);
       
-      ierr = VecSetValues(reactionCoefs, 1, &count, &Bnp, INSERT_VALUES);CHKERRQ(ierr);
-      ierr = VecSetValues(exteriorCoefs, 1, &count, &Cnp, INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValues(reacCoefs, 1, &count, &Bnp, INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValues(extCoefs, 1, &count, &Cnp, INSERT_VALUES);CHKERRQ(ierr);
 
       count++;
     }
   }
 
-  ierr = VecAssemblyBegin(reactionCoefs);CHKERRQ(ierr);
-  ierr = VecAssemblyEnd  (reactionCoefs);CHKERRQ(ierr);
-  ierr = VecAssemblyBegin(exteriorCoefs);CHKERRQ(ierr);
-  ierr = VecAssemblyEnd  (exteriorCoefs);CHKERRQ(ierr);
-  ierr = VecRestoreArrayRead(coulombCoefs, &coulombCoefsArray);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(reacCoefs);CHKERRQ(ierr);
+  ierr = VecAssemblyEnd  (reacCoefs);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(extCoefs);CHKERRQ(ierr);
+  ierr = VecAssemblyEnd  (extCoefs);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }

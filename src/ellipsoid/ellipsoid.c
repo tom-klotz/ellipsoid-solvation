@@ -3,6 +3,7 @@
 #include <mpfr.h>
 #include <stdlib.h>
 #include <string.h>
+#include <petsc.h>
 #include <time.h>
 #include "ellipsoid.h"
 
@@ -489,6 +490,77 @@ void cartesianToEllipsoidal(struct EllipsoidalSystem *s, struct Point *p)
     p->type = 'e';
   }
 }
+
+
+#undef __FUNCT__
+#define __FUNCT__ "CartesianToEllipsoidalVec"
+PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem *e, Vec xyzP, Vec ellP)
+{
+  PetscErrorCode ierr;
+  PetscInt  nPts;
+  PetscReal h2, k2;
+  PetscReal x, y, z;
+  PetscReal a1, a2, a3;
+  PetscReal Q, R, cth, th;
+  PetscReal val3;
+  PetscReal lambda, mu, nu;
+  const PetscScalar *xyzPArray;
+  PetscScalar *ellPArray;
+  PetscFunctionBegin;
+
+  h2 = e->h2;
+  k2 = e->k2;
+  ierr = VecGetSize(xyzP, &nPts);CHKERRQ(ierr);
+  
+  ierr = VecGetArray    (ellP, &ellPArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(xyzP, &xyzPArray);CHKERRQ(ierr);
+  for(PetscInt i=0; i < nPts; ++i) {
+    
+    x = xyzPArray[3*i+0];
+    y = xyzPArray[3*i+1];
+    z = xyzPArray[3*i+2];
+    
+    //Use Romain (6) for approximate values
+    a1 = -(x*x + y*y + z*z + h2 + k2);
+    a2 = x*x*(h2 + k2) + y*y*k2 + z*z*h2 + h2*k2;
+    a3 = -x*x*h2*k2;
+    Q = (a1*a1 - 3.*a2)/9.;
+    R = (9.*a1*a2 - 27.*a3 - 2.*a1*a1*a1)/54.;
+    cth = R/sqrt(Q*Q*Q);
+    th = acos(cth);
+    PetscReal lam[3] = { cos(th/3.0),
+			    cos((th+4.0*M_PI)/3.0),
+			    cos((th+2.0*M_PI)/3.0) };
+    
+    val3 = 2*sqrt(Q)*lam[2] - a1/3.0;
+    if(val3 < 0) {
+      printf("\n\nTHERE WAS AN ISSUE WITH THE TRANSFORM and we got %8.8e\n\n", 2*sqrt(Q)*lam[2] -a1/3.0);
+      val3 = 0;
+    }
+    
+    lambda = sqrt(2*sqrt(Q)*lam[0] - a1/3);
+    mu     = sqrt(2*sqrt(Q)*lam[1] - a1/3);
+    nu     = sqrt(val3);
+    
+    if(x*y*z < 0)
+      lambda = -lambda;
+    if(x*y < 0)
+      mu = -mu;
+    if(x*z < 0)
+      nu = -nu;
+
+    ellPArray[3*i+0] = lambda;
+    ellPArray[3*i+1] = mu;
+    ellPArray[3*i+2] = nu;
+    
+  }
+
+  ierr = VecRestoreArrayRead(xyzP, &xyzPArray);CHKERRQ(ierr);
+  ierr = VecRestoreArray    (ellP, &ellPArray);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
 
 char getLameTypeT(int n, int p)
 {
@@ -1029,25 +1101,25 @@ void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
 }
 
 /*
-void integrand(mpfr_t *x , mpfr_t *val, FuncInfo *ctx)
-{
+  void integrand(mpfr_t *x , mpfr_t *val, FuncInfo *ctx)
+  {
   double x2 = x*x;
   double s;
   int n = (*ctx).n;
   int p = (*ctx).p;
-
+  
   if(x==0.0)
-    s = 1e6;
+  s = 1e6;
   else
-    s = 1.0/x;
+  s = 1.0/x;
   double E = calcLame((*ctx).e, n, p, s);
   return 1.0 / (E*E*sqrt(1.0 - (*ctx).e->k2*x2)*sqrt(1.0 - (*ctx).e->h2*x2));
-}
+  }
 */
 
 double calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
 {
-
+  
   if(l < 0)
     l *= -1.0;
   //int digits = 14;
@@ -1270,10 +1342,10 @@ double calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double
   double a = e->a;
   double b = e->b;
   double c = e->c;
-  double I = calcI(e, n, p, l, signm, signn);
-  double E = calcLame(e, n, p, l, signm, signn);
-  double Eder = calcLameDerivative(e, n, p, l, signm, signn);
-  return (2.0*a*b*c*(Eder/a)*I*E - 1)/2;
+  double Inp = calcI(e, n, p, l, signm, signn);
+  double Enp = calcLame(e, n, p, l, signm, signn);
+  double EnpDer = calcLameDerivative(e, n, p, l, signm, signn);
+  return (2.0*a*b*c*(EnpDer/a)*Inp*Enp - 1)/2;
 }
 
 int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx) 

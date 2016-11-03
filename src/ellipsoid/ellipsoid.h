@@ -94,6 +94,9 @@ typedef struct FuncInfo4 {
 } FuncInfo4;
 
 
+//petsc functions
+PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem*, Vec, Vec);
+
 //functions
 void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
 void initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
