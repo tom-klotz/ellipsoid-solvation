@@ -9,6 +9,7 @@
 #include "ellipsoid/ellSolv.h"
 #include "sphere/sphere.h"
 #include "sphere/sphSolv.h"
+#include <gsl/gsl_rng.h>
 #include "constants.h"
 
 
@@ -1339,9 +1340,105 @@ PetscErrorCode RunArgTester()
   PetscFunctionReturn(0);
 }
 
+
 #undef __FUNCT__
-#define __FUNCT__
-int main( int argc, char **argv ) {
+#define __FUNCT__ "EasyExample"
+/*
+  Example is of a some charges
+*/
+PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
+{
+  PetscErrorCode ierr;
+  Vec sourceXYZ, sourceMag, tarXYZ, solution;
+  PetscReal xh, yh;
+  PetscReal xc, yc;
+  PetscReal xyz[3];
+  PetscReal randVal;
+  PetscInt ind;
+  PetscFunctionBegin;
+
+  const PetscReal eps1 = 4.0;
+  const PetscReal eps2 = 80.0;
+
+  const PetscReal a = 3.0;
+  const PetscReal b = 2.0;
+  const PetscReal c = 1.0;
+
+  // initialize XYZ and solution vectors
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nSrc , &sourceXYZ);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nx*ny, &tarXYZ);   CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , &solution); CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc   , &sourceMag);CHKERRQ(ierr);
+
+  xh = (xr - xl) / (nx - 1);
+  yh = (yr - yl) / (ny - 1);
+
+
+  // populate source vec with points
+  PetscRandom rnd;
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd, -1.0, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetFromOptions(rnd);CHKERRQ(ierr);
+  for(PetscInt k=0; k<nSrc; ++k) {
+    ind = 3*k;
+    //randVal = gsl_rng_uniform(r);
+    PetscRandomGetValue(rnd, &randVal);CHKERRQ(ierr);
+    ierr = VecSetValue(sourceMag, k  , 1.0      , INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(sourceXYZ, ind+0, randVal*a, INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(sourceXYZ, ind+1, -(k%2)*b*(randVal/2.0)   , INSERT_VALUES);CHKERRQ(ierr);
+    ierr = VecSetValue(sourceXYZ, ind+2, 0, INSERT_VALUES);CHKERRQ(ierr);
+  }
+  ierr = VecAssemblyBegin(sourceXYZ);CHKERRQ(ierr); ierr = VecAssemblyEnd(sourceXYZ);CHKERRQ(ierr);
+  ierr = VecAssemblyBegin(sourceMag);CHKERRQ(ierr); ierr = VecAssemblyEnd(sourceMag);CHKERRQ(ierr);
+
+  // populate target vec with points
+  for(PetscInt i=0; i<nx; ++i) {
+    xc = xl + xh*i;
+    for(PetscInt j=0; j<ny; ++j) {
+      yc = yl + yh*j;
+      
+      ind = 3 * (ny*i + j);
+      ierr = VecSetValue(tarXYZ, ind + 0, xc    , INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValue(tarXYZ, ind + 1, yc    , INSERT_VALUES);CHKERRQ(ierr);
+      ierr = VecSetValue(tarXYZ, ind + 2, zConst, INSERT_VALUES);CHKERRQ(ierr);
+    }
+  }
+  ierr = VecAssemblyBegin(tarXYZ);CHKERRQ(ierr); ierr = VecAssemblyEnd(tarXYZ);CHKERRQ(ierr);
+  // calculate the solvation potential
+  VecView(sourceXYZ, PETSC_VIEWER_STDOUT_SELF);
+  ierr = CalcEllipsoidSolvationPotential( a , b , c,
+					  eps1, eps2,
+					  nSrc, sourceXYZ, sourceMag,
+					  nx*ny, tarXYZ,
+					  Nmax, solution); CHKERRQ(ierr);
+  
+
+  FILE *fp = fopen("solvPlot.txt", "w");
+  fprintf(fp, "xh: %4.4e\n", xh);
+  fprintf(fp, "yh: %4.4e\n", yh);
+  const PetscScalar *solutionArray;
+  ierr = VecGetArrayRead(solution, &solutionArray);CHKERRQ(ierr);
+  PetscInt index = 0;
+  for(PetscInt i=0; i<nx; ++i) {
+    for(PetscInt j=0; j<ny; ++j) {
+      index = i*ny + j;
+      fprintf(fp, "%4.4f ", solutionArray[index]);
+    }
+    fprintf(fp, "\n");
+  }
+  ierr = VecRestoreArrayRead(solution, &solutionArray);CHKERRQ(ierr);
+  
+  ierr = VecDestroy(&sourceXYZ);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarXYZ);CHKERRQ(ierr);
+  ierr = VecDestroy(&solution);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
+#define __FUNCT__ "main"
+PetscErrorCode main( int argc, char **argv )
+{
 
   PetscErrorCode ierr;
 
@@ -1356,6 +1453,20 @@ int main( int argc, char **argv ) {
   //runTest4();
   //test4sphere();
   //RunArg();
-  ierr = RunArgTester(); CHKERRQ(ierr);
-  ierr = PetscFinalize(); CHKERRQ(ierr);
+  //ierr = RunArgTester(); CHKERRQ(ierr);
+  //PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
+  PetscInt Nmax = 5;
+  PetscInt nSrc = 10;
+  PetscInt nx   = 10;
+  PetscReal xl  = -4.6;
+  PetscReal xr  = 4.6;
+  PetscInt ny   = 10;
+  PetscReal yl  = -3;
+  PetscReal yr  = 3;
+  PetscReal zConst = .1;
+  ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+
+
+  
+  ierr = PetscFinalize();CHKERRQ(ierr);
 }

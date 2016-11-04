@@ -2,7 +2,7 @@ from numpy import *
 from matplotlib.pyplot import *
 
 figure()
-A = loadtxt('plotelltest4.txt')
+A = loadtxt('solvPlot.txt', skiprows=2)
 for i in range(0,A.size):
     if (A.flat[i] > 1):
         A.flat[i] = 1;

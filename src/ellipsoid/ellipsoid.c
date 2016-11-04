@@ -511,11 +511,12 @@ PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem *e, Vec xyzP, Vec ell
   h2 = e->h2;
   k2 = e->k2;
   ierr = VecGetSize(xyzP, &nPts);CHKERRQ(ierr);
+  nPts = nPts/3;
   
   ierr = VecGetArray    (ellP, &ellPArray);CHKERRQ(ierr);
   ierr = VecGetArrayRead(xyzP, &xyzPArray);CHKERRQ(ierr);
   for(PetscInt i=0; i < nPts; ++i) {
-    
+
     x = xyzPArray[3*i+0];
     y = xyzPArray[3*i+1];
     z = xyzPArray[3*i+2];

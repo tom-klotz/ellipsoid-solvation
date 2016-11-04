@@ -10,7 +10,7 @@
 
 
 #undef __FUNCT__
-#define __FUNCT__ "CalcSolvationPotential"
+#define __FUNCT__ "CalcEllipsoidSolvationPotential"
 PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscInt nTarget, Vec targetXYZ, PetscInt Nmax, Vec targetSol)
 {
   PetscErrorCode ierr;
@@ -23,7 +23,11 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   Vec tarIntEll, tarExtEll;
   Vec srcEll, tarEll;
   Vec coulCoefs, reactCoefs, extCoefs;
-  const PetscScalar *targetXYZArray;
+  Vec EnpVals, FnpVals;
+  PetscInt *isExt;
+  const PetscScalar *targetXYZArray, *coulCoefsArray, *reactCoefsArray, *extCoefsArray;
+  PetscScalar *targetSolArray;
+  const PetscScalar *EnpValsArray, *FnpValsArray;
   PetscFunctionBegin;
   
   initEllipsoidalSystem(&e, a, b, c);
@@ -46,6 +50,9 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   // sort points into int and ext vectors
   ierr = VecGetArray(tarIntXYZ, &tarIntXYZArray);CHKERRQ(ierr);
   ierr = VecGetArray(tarExtXYZ, &tarExtXYZArray);CHKERRQ(ierr);
+
+  ierr = PetscMalloc1(sizeof(PetscInt)*nTarget, &isExt);CHKERRQ(ierr);
+  
   intPts = 0; extPts = 0;
   for(int k=0; k < nTarget; ++k) {
     x = targetXYZArray[3*k+0];
@@ -55,12 +62,14 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
       tarIntXYZArray[3*intPts+0] = x;
       tarIntXYZArray[3*intPts+1] = y;
       tarIntXYZArray[3*intPts+2] = z;
-      intPts++;      
+      isExt[k] = 0;
+      intPts++;   
     }
     else {
       tarExtXYZArray[3*extPts+0] = x;
       tarExtXYZArray[3*extPts+1] = y;
       tarExtXYZArray[3*extPts+2] = z;
+      isExt[k] = 1;
       extPts++;
     }
   }
@@ -89,24 +98,80 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   // calc reaction and exterior expansion coefs from coulomb coefs
   ierr = CalcReactAndExtCoefsFromCoulomb(&e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
 
-  // loop
-  for(n=0; n <= Nmax; ++n) {
-    for(p=0; p < 2*n+1; ++p) {
 
-      // calc interior solid harmonics for interior points
+  // create EnpVals and FnpVals vectors
+  ierr = VecCreateSeq(PETSC_COMM_SELF, intPts, &EnpVals);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, extPts, &FnpVals);CHKERRQ(ierr);
+
+  
+  // get read-only pointers for expansion coefficients
+  ierr = VecGetArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(extCoefs, &extCoefsArray);CHKERRQ(ierr);
+  // get write pointer for solution vector
+  ierr = VecZeroEntries(targetSol);CHKERRQ(ierr);
+  ierr = VecGetArray(targetSol, &targetSolArray);CHKERRQ(ierr);
+  // loop
+  PetscInt ind = 0;
+  PetscInt intInd;
+  PetscInt extInd;
+  for(n=0; n <= Nmax; ++n) {
+    printf("%d/%d\n", n, Nmax);
+    for(p=0; p < 2*n+1; ++p) {
       
-      // calc exterior solid harmonics for exterior points
-      printf("p\n");
+      PetscReal Gnp =  coulCoefsArray[ind];
+      PetscReal Cnp =   extCoefsArray[ind];
+      PetscReal Bnp = reactCoefsArray[ind];
+      // calc solid harmonics for interior,exterior points
+      ierr = CalcSolidInteriorHarmonicVec(&e, intPts, tarIntEll, n, p, EnpVals);CHKERRQ(ierr);
+      ierr = CalcSolidExteriorHarmonicVec(&e, extPts, tarExtEll, n, p, FnpVals);CHKERRQ(ierr);
+      ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
+      ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      intInd = 0;
+      extInd = 0;
+      for(PetscInt k=0; k<nTarget; ++k) {
+
+	if(isExt[k] == 0) { // interior points
+	  //printf("E%d%d: %15.15f\nBnp %d%d: %15.15f\n\n", n, p, n, p, EnpValsArray[intInd], reactCoefsArray[ind]);
+	  targetSolArray[k] += reactCoefsArray[ind]*EnpValsArray[intInd];
+	  //ierr = CalcSolidInterior
+	  //targetSolArray[k] += Gnp*EnpValsArray[intInd];
+	  //targetSolArray[k] += 0;
+	  intInd++;
+	}
+	else { // exterior points
+	  //printf("F%d%d: %15.15f\nCnp %d%d: %15.15f\n\n", n, p, n, p, FnpValsArray[intInd], extCoefsArray[ind]);
+	  targetSolArray[k] += extCoefsArray[ind]*FnpValsArray[extInd];
+	  //targetSolArray[k] += (Gnp*FnpValsArray[extInd])/eps1;
+	  targetSolArray[k] += 0;
+	  extInd++;
+	}
+      }
+      ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
+      ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      
+      ind++;
       
     }
   }
-  
-  ierr = VecDestroy(&tarIntXYZ);CHKERRQ(ierr);
-  ierr = VecDestroy(&tarExtXYZ);CHKERRQ(ierr);
-  ierr = VecDestroy(&tarIntEll);CHKERRQ(ierr);
-  ierr = VecDestroy(&tarExtEll);CHKERRQ(ierr);
-  ierr = VecDestroy(&srcEll);CHKERRQ(ierr);
-  ierr = VecDestroy(&tarEll);CHKERRQ(ierr);
+  ierr = VecRestoreArray(targetSol, &targetSolArray);CHKERRQ(ierr);
+  // restore read-only pointers for expansion coefficients
+  ierr = VecGetArrayRead(coulCoefs , &coulCoefsArray );CHKERRQ(ierr);
+  ierr = VecGetArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(extCoefs  , &extCoefsArray  );CHKERRQ(ierr);
+ 
+
+  ierr = VecDestroy(&tarIntXYZ);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarExtXYZ);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarIntEll);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarExtEll);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&srcEll);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&tarEll);CHKERRQ(ierr);CHKERRQ(ierr);
+  ierr = VecDestroy(&coulCoefs);CHKERRQ(ierr);
+  ierr = VecDestroy(&reactCoefs);CHKERRQ(ierr);
+  ierr = VecDestroy(&extCoefs);CHKERRQ(ierr);
+  ierr = VecDestroy(&EnpVals); CHKERRQ(ierr);
+  ierr = VecDestroy(&FnpVals); CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
