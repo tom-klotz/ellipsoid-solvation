@@ -179,10 +179,17 @@ void eigs(double *M, int matSize, double *real, double *imag) {
 }
 
 
+
+#undef __FUNCT__
+#define __FUNCT__ "getCoefsK"
 //////////////
 //FROM DASSIOS
 //////////////
-void getCoefsK(EllipsoidalSystem *s, int n, double **coefs) {
+PetscErrorCode getCoefsK(EllipsoidalSystem *s, int n, double **coefs) {
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  
+  PetscFunctionBegin;
   //r=n/2 if even, (n-1)/2 if odd
   int r = n/2;
   //matrix size for class K is r+1
@@ -197,14 +204,17 @@ void getCoefsK(EllipsoidalSystem *s, int n, double **coefs) {
   double *f = (double*) malloc(sizeof(double)*(matSize-1));
   double *g = (double*) malloc(sizeof(double)*(matSize-1));
 
+  flopCount = 2;
   //construct the diagonal (size matSize)
   for(int i=1; i<=matSize; ++i)
     d[i-1] = (n - 2*i + 2)*(n - 2*i + 2);
+  flopCount += 7*matSize;
   //construct above and below diagonal (size matSize-1)
   for(int i=1; i<matSize; ++i) {
     g[i-1] = (2./alpha)*i*(2*n - 2*i + 1);
     f[i-1] = -(beta/alpha)*(n - 2*i + 1)*(n - 2*i + 2);
   }
+  flopCount += 17*matSize;
   
   //fill diagonal with d
   for(int k=0; k < matSize; ++k)
@@ -218,8 +228,8 @@ void getCoefsK(EllipsoidalSystem *s, int n, double **coefs) {
   double *vals = (double*) malloc(sizeof(double)*matSize);
   eigs(M, matSize, vals, NULL);
   
-  for(int i=0; i<matSize; ++i)
-    printf("Kn=%d vals[%d] = %15.15f\n", n, i, vals[i]);
+  //for(int i=0; i<matSize; ++i)
+  //printf("Kn=%d vals[%d] = %15.15f\n", n, i, vals[i]);
 
   double pj;
   //loop over each root
@@ -235,10 +245,12 @@ void getCoefsK(EllipsoidalSystem *s, int n, double **coefs) {
 	/(2*k*(2*n - 2*k + 1));
     }
   }
-  
+  flopCount += 7*matSize + matSize*PetscMax(0,(matSize-2))*27;
   
   //for(int i=0; i<matSize; ++i)
   //printf("%5.5f\n", vals[i]);
+  ierr = PetscLogFlops(flopCount);
+  PetscFunctionReturn(0);
 }
 
 void getCoefsL(EllipsoidalSystem *s, int n, double **coefs) {
@@ -309,24 +321,34 @@ void getCoefsN(EllipsoidalSystem *s, int n, double **coefs) {
 }
 
 
-
-double calcLame2(EllipsoidalSystem *s, int n, int p, double l) {
+#undef __FUNCT__
+#define __FUNCT__ "calcLame2"
+PetscErrorCode calcLame2(EllipsoidalSystem *s, int n, int p, double l, double *sol)
+{
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
   char t = getLameTypeT(n, p);
-  double sum = 0;
+  *sol = 0;
   if (t == 'K') {
     int r = n/2;
     for(int k=0; k <= r; ++k) {
-      sum += s->Dconsts[n][p][k] * pow(l,n - 2*k);
+      *sol += s->Dconsts[n][p][k] * pow(l,n - 2*k); flopCount += 2;
     }
   }
   if (t == 'L') {
     int r = (n+1)/2;
     for(int k=0; k <= r-1; ++k) {
-      sum += s->Dconsts[n][p][k] * pow(l, n - 1 - 2*k);
+      *sol += s->Dconsts[n][p][k] * pow(l, n - 1 - 2*k); flopCount += 2;
     }
-    sum *= sqrt(fabs(l*l - s->h2));
+    *sol *= sqrt(fabs(l*l - s->h2)); flopCount += 3;
   }
-  return sum;
+
+
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 
@@ -945,8 +967,16 @@ void initRomainConstsToOrderN(EllipsoidalSystem *e, int N) {
   
 }
 
-double calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
+
+#undef __FUNCT__
+#define __FUNCT__ "calcLame"
+PetscErrorCode calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *Enp)
 {
+  PetscErrorCode ierr;
+  PetscInt countFlops;
+  PetscFunctionBegin;
+  countFlops = 0;
+  
   double signh, signk;
   if(signm*l >= 0)
     signh = 1;
@@ -1008,14 +1038,21 @@ double calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm, int sig
   //Romain p242 and Dassios (D9,D10 and their gamma in B16-B20)
   //for(int k=0; k<(m+1); ++k)
   //b[k] = b[k]/(b[(m+1)-1]/pow(-e->h2,(m+1)-1));
+  countFlops = 7;
   double P = b[m];
-  for(int j=m-1; j>-1; --j)
+  for(int j=m-1; j>-1; --j) {
     P = P*Lambda_Romain + b[j];
+    countFlops += 2;
+  }
   //free(B);
   //free(b);
   //printf("psi: %15.15f\n", psi);
   //printf("p: %d\n", p);
-  return psi*P;
+  
+  *Enp = psi*P; countFlops++;
+  
+  ierr = PetscLogFlops(countFlops);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
@@ -1094,7 +1131,8 @@ void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
   mpfr_t *temp = &((*ctx).e->temp1);
   mpfr_d_div(*temp, 1.0, *x, MPFR_RNDN);
   double s = mpfr_get_d(*temp, MPFR_RNDZ);
-  double E = calcLame((*ctx).e, (*ctx).n, (*ctx).p, s, ctx->signm, ctx->signn);
+  double E;
+  calcLame((*ctx).e, (*ctx).n, (*ctx).p, s, ctx->signm, ctx->signn, &E);
   mpfr_mul(*temp, *x, *x, MPFR_RNDN);
   mpfr_set(*val, *temp, MPFR_RNDN);
   mpfr_mul_d(*temp, *temp, (*ctx).e->k2, MPFR_RNDN);
@@ -1128,25 +1166,33 @@ void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
   }
 */
 
-double calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
+#undef __FUNCT__
+#define __FUNCT__ "calcI"
+PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol)
 {
-  
-  if(l < 0)
+  PetscErrorCode ierr;
+  PetscInt logFlops;
+  PetscFunctionBegin;
+  logFlops = 0;
+  if(l < 0) {
     l *= -1.0;
+    logFlops ++;
+  }
   //int digits = 14;
   FuncInfo ctx = { e, n, p, signm, signn};
-  double integral;
   mpfr_t *a = &(e->tempa);
   mpfr_t *b = &(e->tempb);
   mpfr_set_d(*a, 0.0, MPFR_RNDN);
   mpfr_set_d(*b, 1.0, MPFR_RNDN);
   mpfr_div_d(*b, *b, l, MPFR_RNDN);
   //printf("a: %15.15f\nb: %15.15f\n", mpfr_get_d(*a, MPFR_RNDN), mpfr_get_d(*b, MPFR_RNDN));
-  int err = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*))integrand, e, *a, *b, 14, &integral, &ctx);
+  int err = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*))integrand, e, *a, *b, 14, sol, &ctx);
   if(err)
     printf("integral failed\n");
-  //printf("the integral is: %15.15f\n", integral);
-  return integral;
+  //printf("the integral is: %15.15f\n", *sol);
+
+  ierr = PetscLogFlops(logFlops);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 double calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
@@ -1155,7 +1201,8 @@ double calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, 
   double l2 = l*l;
   double k2 = e->k2;
   double h2 = e->h2;
-  double E = calcLame(e, n, p, l, signm, signn);
+  double E;
+  calcLame(e, n, p, l, signm, signn, &E);
   return -1.0 / (E*E*sqrt(l2 - k2)*sqrt(l2 - h2));
 }
 
@@ -1168,7 +1215,8 @@ void normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
   //double h2 = (*ctx).e->h2;
   //double k2 = (*ctx).e->k2;
   EllipsoidalSystem *e = (*ctx).e;
-  double top = calcLame((*ctx).e, n, p, mpfr_get_d(*x, MPFR_RNDN), 1, 1);
+  double top;
+  calcLame((*ctx).e, n, p, mpfr_get_d(*x, MPFR_RNDN), 1, 1, &top);
   mpfr_t *temp = &((*ctx).e->temp1);
   mpfr_mul(*temp, *x, *x, MPFR_RNDN);
   mpfr_d_sub(*val, e->k2, *temp, MPFR_RNDN);
@@ -1347,16 +1395,28 @@ double calcNormalization(EllipsoidalSystem *e, int n, int p)
   return 8 * (M_PI/2.0)*(alpha*B - beta*A);
 }
 
+#undef __FUNCT__
+#define __FUNCT__ "calcSurfaceOperatorEigenvalues"
 //calculate the eigenvalues of the surface operator
-double calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
+PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol)
 {
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
   double a = e->a;
   double b = e->b;
   double c = e->c;
-  double Inp = calcI(e, n, p, l, signm, signn);
-  double Enp = calcLame(e, n, p, l, signm, signn);
+  double Inp;
+  ierr = calcI(e, n, p, l, signm, signn, &Inp);CHKERRQ(ierr);
+  double Enp;
+  ierr = calcLame(e, n, p, l, signm, signn, &Enp);CHKERRQ(ierr);
   double EnpDer = calcLameDerivative(e, n, p, l, signm, signn);
-  return (2.0*a*b*c*(EnpDer/a)*Inp*Enp - 1)/2;
+
+  *sol = (2.0*a*b*c*(EnpDer/a)*Inp*Enp - 1)/2;
+  
+  ierr = PetscLogFlops(9);
+  PetscFunctionReturn(0);
 }
 
 int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx) 

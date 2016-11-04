@@ -217,9 +217,9 @@ PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem* e, PetscReal lambda,
   if(nu < 0)
     signn = -1;
 
-  eL = calcLame(e, n, p, lambda, signm, signn);
-  eM = calcLame(e, n, p, mu, signm, signn);
-  eN = calcLame(e, n, p, nu, signm, signn);
+  calcLame(e, n, p, lambda, signm, signn, &eL);
+  calcLame(e, n, p, mu, signm, signn, &eM);
+  calcLame(e, n, p, nu, signm, signn, &eN);
   
   *val = eL*eM*eN;
   
@@ -256,9 +256,9 @@ PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoin
     if(nu < 0)
       signn = -1;
     else signn = 1;
-    eL = calcLame(e, n, p, lambda, signm, signn);
-    eM = calcLame(e, n, p, mu, signm, signn);
-    eN = calcLame(e, n, p, nu, signm, signn);
+    calcLame(e, n, p, lambda, signm, signn, &eL);
+    calcLame(e, n, p, mu, signm, signn, &eM);
+    calcLame(e, n, p, nu, signm, signn, &eN);
     Enp = eL*eM*eN;
     ierr = VecSetValue(values, k, Enp, INSERT_VALUES); CHKERRQ(ierr);
   }
@@ -289,7 +289,7 @@ PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem *e, PetscReal lambda,
 
 
   ierr = CalcSolidInteriorHarmonic(e, lambda, mu, nu, n, p, &Enp);CHKERRQ(ierr);
-  Inp = calcI(e, n, p, lambda, signm, signn);
+  calcI(e, n, p, lambda, signm, signn, &Inp);
 
   *val = (2*n + 1) * Enp * Inp;
 
@@ -324,7 +324,7 @@ PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoin
     else signn = 1;
     
     ierr = CalcSolidInteriorHarmonic(e, lambda, mu, nu, n, p, &Enp);CHKERRQ(ierr);
-    Inp = calcI(e, n, p, lambda, signm, signn);
+    calcI(e, n, p, lambda, signm, signn, &Inp);
     Fnp = (2*n + 1) * Enp * Inp;
     ierr = VecSetValues(values, 1, &k, &Fnp, INSERT_VALUES);CHKERRQ(ierr);
   }
@@ -417,8 +417,7 @@ PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem* e, PetscReal e
 
       Gnp = coulCoefsArray[count];
       
-      Ea    = calcLame(e, n, p, e->a, 1, 1);
-      Ia    = calcI   (e, n, p, e->a, 1, 1);
+      calcLame(e, n, p, e->a, 1, 1, &Ea);
       Fa    = (2*n + 1) * Ea    * Ia;
       EaDer = calcLameDerivative(e, n, p, e->a, 1, 1);
       IaDer = calcIDerivative   (e, n, p, e->a, 1, 1);

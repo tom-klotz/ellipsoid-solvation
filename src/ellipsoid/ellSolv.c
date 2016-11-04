@@ -18,9 +18,10 @@ double calcEnp(EllipsoidalSystem *e, Point *point, int n, int p) {
     signm = -1;
   if(point->x3 < 0)
     signn = -1;
-  double eL = calcLame(e, n, p, point->x1, signm, signn);
-  double eM = calcLame(e, n, p, point->x2, signm, signn);
-  double eN = calcLame(e, n, p, point->x3, signm, signn);
+  double eL, eM, eN;
+  calcLame(e, n, p, point->x1, signm, signn, &eL);
+  calcLame(e, n, p, point->x2, signm, signn, &eM);
+  calcLame(e, n, p, point->x3, signm, signn, &eN);
 
   return eL*eM*eN;
 }
@@ -63,7 +64,8 @@ double calcFnp(EllipsoidalSystem *e, Point *point, int n, int p)
     signn = -1;
 
   double enpval = calcEnp(e, point, n, p);
-  double ival   = calcI(e, n, p, point->x1, signm, signn);
+  double ival;
+  calcI(e, n, p, point->x1, signm, signn, &ival);
   //printf("ENP: %15.15f\nI: %15.15f\n", enpval, ival);
   return (2*n + 1) * enpval * ival;
 }
@@ -72,8 +74,10 @@ double calcFnp(EllipsoidalSystem *e, Point *point, int n, int p)
 void calcBnpAndCnpFromGnp(Problem *problem, int n, int p, double Gnp, double *Bnp, double *Cnp)
 {
   EllipsoidalSystem *e = problem->e;
-  double Ea = calcLame(e, n, p, e->a, 1, 1);
-  double Ia = calcI(problem->e, n, p, e->a, 1, 1);
+  double Ea;
+  calcLame(e, n, p, e->a, 1, 1, &Ea);
+  double Ia;
+  calcI(problem->e, n, p, e->a, 1, 1, &Ia);
   double Fa = (2*n + 1) * Ea * Ia;
   double EaDer = calcLameDerivative(e, n, p, e->a, 1, 1);
   double IaDer = calcIDerivative(e, n, p, e->a, 1, 1);

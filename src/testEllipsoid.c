@@ -174,7 +174,7 @@ int testI()
   int i=0;
   for(int n=0; n < nmax+1; ++n) {
     for(int p=0; p < 2*n+1; ++p) {
-      Ival[i] = calcI(&e, n, p, l, 1, 1);
+      calcI(&e, n, p, l, 1, 1, Ival+i); //Ival[i] = calcI(&e, n, p, l, 1, 1);
       i++;
     }
   }
@@ -334,7 +334,7 @@ int testSurfaceOperatorEigenvalues()
 
   double *ev = (double*) malloc(sizeof(double)*(3));
   for(int p=0; p < 3; ++p)
-    ev[p] = calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1);
+    calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1, ev+p); //ev[p] = calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1);
   for(int p=0; p < 3; ++p) {
     if(fabs(ev[p] - analytic[p]) > tol) {
       printf("analytic (%8.8e) doesn't match numerical (%8.8e), error = (%8.8e) for integral %d\n", analytic[p], ev[p], fabs(ev[p] - analytic[p]), p+1);
