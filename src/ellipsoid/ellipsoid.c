@@ -329,8 +329,15 @@ double calcLame2(EllipsoidalSystem *s, int n, int p, double l) {
   return sum;
 }
 
-void ellipsoidToCartesian(EllipsoidalSystem *s, Point *p)
+
+#undef __FUNCT__
+#define __FUNCT__ "ellipsoidToCartesian"
+PetscErrorCode ellipsoidToCartesian(EllipsoidalSystem *s, Point *p)
 {
+  PetscErrorCode ierr;
+
+
+  PetscFunctionBegin;
   if(p->type != 'c') {
     double h2 = s->h2;
     double k2 = s->k2;
@@ -354,6 +361,9 @@ void ellipsoidToCartesian(EllipsoidalSystem *s, Point *p)
     
     p->type = 'c';
   }
+
+  ierr = PetscLogFlops(36);
+  PetscFunctionReturn(0);
 } 
 
 

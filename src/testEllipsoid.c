@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <mpfr.h>
+#include <petsc.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -169,11 +170,11 @@ int testI()
       Isize++;
     }
   }
-  double *I = (double*) malloc(sizeof(double)*Isize);
+  double *Ival = (double*) malloc(sizeof(double)*Isize);
   int i=0;
   for(int n=0; n < nmax+1; ++n) {
     for(int p=0; p < 2*n+1; ++p) {
-      I[i] = calcI(&e, n, p, l, 1, 1);
+      Ival[i] = calcI(&e, n, p, l, 1, 1);
       i++;
     }
   }
@@ -182,45 +183,45 @@ int testI()
   double analyticalSumTest1 = 1.0/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
   double numericalSumTest1 = 0;
   for(int k=1; k<4; ++k) {
-    numericalSumTest1 += I[k];
+    numericalSumTest1 += Ival[k];
   }
   errors[ecount] = fabs(analyticalSumTest1 - numericalSumTest1); ecount++;
   
   //Dassios D8: their alpha1 = our a, their alpha2 = our b, their alpha3 = our c
-  double analyticalSumTest2 = I[0] - (l*l - a*a)/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
-  double numericalSumTest2 = a*a*I[1] + b*b*I[2] + c*c*I[3];
+  double analyticalSumTest2 = Ival[0] - (l*l - a*a)/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
+  double numericalSumTest2 = a*a*Ival[1] + b*b*Ival[2] + c*c*Ival[3];
   errors[ecount] = fabs(analyticalSumTest2 - numericalSumTest2); ecount++;
   //Dassios D9: their Lambda = our DassiosLambda, their LambdaPrime = our DassiosLambdaPrime
-  double analyticalSumTest3 = 1.0/(2.0*(DassiosLambda - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(I[1]/(DassiosLambda - a*a) + I[2]/(DassiosLambda - b*b) + I[3]/(DassiosLambda - c*c));
-  double numericalSumTest3 = I[4];
+  double analyticalSumTest3 = 1.0/(2.0*(DassiosLambda - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(Ival[1]/(DassiosLambda - a*a) + Ival[2]/(DassiosLambda - b*b) + Ival[3]/(DassiosLambda - c*c));
+  double numericalSumTest3 = Ival[4];
   errors[ecount] = fabs(analyticalSumTest3 - numericalSumTest3); ecount++;
   //Dassios D10: their Lambda = our DassiosLambda, their LambdaPrime = our DassiosLambdaPrime
-  double analyticalSumTest4 = 1.0/(2.0*(DassiosLambdaPrime - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(I[1]/(DassiosLambdaPrime - a*a) + I[2]/(DassiosLambdaPrime - b*b) + I[3]/(DassiosLambdaPrime - c*c));
-  double numericalSumTest4 = I[5];
+  double analyticalSumTest4 = 1.0/(2.0*(DassiosLambdaPrime - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(Ival[1]/(DassiosLambdaPrime - a*a) + Ival[2]/(DassiosLambdaPrime - b*b) + Ival[3]/(DassiosLambdaPrime - c*c));
+  double numericalSumTest4 = Ival[5];
   errors[ecount] = fabs(analyticalSumTest4 - numericalSumTest4); ecount++;
   //Dassios D11: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest5 = (1.0/(h*h)) * (I[2] - I[1]);
-  double numericalSumTest5 = I[6];
+  double analyticalSumTest5 = (1.0/(h*h)) * (Ival[2] - Ival[1]);
+  double numericalSumTest5 = Ival[6];
   errors[ecount] = fabs(analyticalSumTest5 - numericalSumTest5); ecount++;
   //Dassios D12: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest6 = (1.0/(k*k)) * (I[3] - I[1]);
-  double numericalSumTest6 = I[7];
+  double analyticalSumTest6 = (1.0/(k*k)) * (Ival[3] - Ival[1]);
+  double numericalSumTest6 = Ival[7];
   errors[ecount] = fabs(analyticalSumTest6 - numericalSumTest6); ecount++;
   //Dassios D13: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest7 = (1.0/(b*b - c*c)) * (I[3] - I[2]);
-  double numericalSumTest7 = I[8];
+  double analyticalSumTest7 = (1.0/(b*b - c*c)) * (Ival[3] - Ival[2]);
+  double numericalSumTest7 = Ival[8];
   errors[ecount] = fabs(analyticalSumTest7 - numericalSumTest7); ecount++;
   
   //checking errors
   for(int i=0; i < 18; ++i) {
     if(errors[i] > tol) {
       printf("Dassios D%d failed with error %8.8e\n", derror[i], errors[i]);
-      free(I);
+      free(Ival);
       return 0;
     }
   }
   
-  free(I);
+  free(Ival);
   return 1;
 }
 

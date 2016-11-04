@@ -96,6 +96,7 @@ typedef struct FuncInfo4 {
 
 //petsc functions
 PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem*, Vec, Vec);
+PetscErrorCode ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
 
 //functions
 void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
@@ -106,7 +107,7 @@ void getCoefsL(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsM(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsN(EllipsoidalSystem *s, int n, double **coefs);
 double calcLame2(EllipsoidalSystem *s, int n, int p, double l);
-void ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
+//void ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
 void cartesianToEllipsoidal(struct EllipsoidalSystem *s, struct Point *p);
 void cartesianToEllipsoidal2(struct EllipsoidalSystem *e, struct Point *p);
 char getLameTypeT(int n, int p);

@@ -28,7 +28,14 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   const PetscScalar *targetXYZArray, *coulCoefsArray, *reactCoefsArray, *extCoefsArray;
   PetscScalar *targetSolArray;
   const PetscScalar *EnpValsArray, *FnpValsArray;
+
+  PetscLogStage stageSolids;
+  PetscLogEvent INTERIOR_FLOPS;
+  PetscLogEvent EXTERIOR_FLOPS;
+  PetscLogDouble user_log_flops;
   PetscFunctionBegin;
+
+  ierr = PetscLogStageRegister("Solid Harmonic Flops", &stageSolids);
   
   initEllipsoidalSystem(&e, a, b, c);
 
@@ -115,6 +122,12 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   PetscInt ind = 0;
   PetscInt intInd;
   PetscInt extInd;
+  ierr = PetscLogEventRegister("Interior Harmonic Flops", 0, &INTERIOR_FLOPS);CHKERRQ(ierr);
+  ierr = PetscLogEventRegister("Exterior Harmonic Flops", 0, &EXTERIOR_FLOPS);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(INTERIOR_FLOPS, 0, 0, 0, 0);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(EXTERIOR_FLOPS, 0, 0, 0, 0);CHKERRQ(ierr);
+  ierr = PetscLogEventDeactivate(INTERIOR_FLOPS);CHKERRQ(ierr);
+  ierr = PetscLogEventDeactivate(EXTERIOR_FLOPS);CHKERRQ(ierr);
   for(n=0; n <= Nmax; ++n) {
     printf("%d/%d\n", n, Nmax);
     for(p=0; p < 2*n+1; ++p) {
@@ -123,8 +136,17 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
       PetscReal Cnp =   extCoefsArray[ind];
       PetscReal Bnp = reactCoefsArray[ind];
       // calc solid harmonics for interior,exterior points
+
+
+      ierr = PetscLogStagePush(stageSolids);CHKERRQ(ierr);
+      ierr = PetscLogEventBegin(INTERIOR_FLOPS,0,0,0,0);CHKERRQ(ierr);
       ierr = CalcSolidInteriorHarmonicVec(&e, intPts, tarIntEll, n, p, EnpVals);CHKERRQ(ierr);
+      ierr = PetscLogEventEnd  (INTERIOR_FLOPS,0,0,0,0);CHKERRQ(ierr);
+      ierr = PetscLogEventBegin(EXTERIOR_FLOPS,0,0,0,0);CHKERRQ(ierr);
       ierr = CalcSolidExteriorHarmonicVec(&e, extPts, tarExtEll, n, p, FnpVals);CHKERRQ(ierr);
+      ierr = PetscLogEventEnd(EXTERIOR_FLOPS,0,0,0,0);CHKERRQ(ierr);
+      ierr = PetscLogStagePop();CHKERRQ(ierr);
+      
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
       intInd = 0;
@@ -154,12 +176,16 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
       
     }
   }
+  //ierr = PetscLogEventEnd(SOLID_FLOPS, 0, 0, 0, 0);
+
   ierr = VecRestoreArray(targetSol, &targetSolArray);CHKERRQ(ierr);
   // restore read-only pointers for expansion coefficients
   ierr = VecGetArrayRead(coulCoefs , &coulCoefsArray );CHKERRQ(ierr);
   ierr = VecGetArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
   ierr = VecGetArrayRead(extCoefs  , &extCoefsArray  );CHKERRQ(ierr);
- 
+
+
+
 
   ierr = VecDestroy(&tarIntXYZ);CHKERRQ(ierr);CHKERRQ(ierr);
   ierr = VecDestroy(&tarExtXYZ);CHKERRQ(ierr);CHKERRQ(ierr);
@@ -180,6 +206,7 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
 #define __FUNCT__ "CalcSolidInteriorHarmonic"
 PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem* e, PetscReal lambda, PetscReal mu, PetscReal nu, PetscInt n, PetscInt p, PetscReal *val)
 {
+  PetscErrorCode ierr;
   PetscInt signm = 1;
   PetscInt signn = 1;
   PetscReal eL, eM, eN;
@@ -195,6 +222,8 @@ PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem* e, PetscReal lambda,
   eN = calcLame(e, n, p, nu, signm, signn);
   
   *val = eL*eM*eN;
+  
+  ierr= PetscLogFlops(3);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -236,6 +265,8 @@ PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoin
   ierr = VecAssemblyBegin(values); CHKERRQ(ierr);
   ierr = VecAssemblyEnd(values); CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(ellPoints, &ellPointsArray); CHKERRQ(ierr);
+  
+  ierr = PetscLogFlops(3*nPoints);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -261,6 +292,8 @@ PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem *e, PetscReal lambda,
   Inp = calcI(e, n, p, lambda, signm, signn);
 
   *val = (2*n + 1) * Enp * Inp;
+
+  PetscLogFlops(4);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -297,7 +330,8 @@ PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoin
   }
   ierr = VecAssemblyBegin(values);CHKERRQ(ierr); ierr = VecAssemblyEnd(values);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(ellPoints, &ellPointsArray);CHKERRQ(ierr);
-  
+
+  ierr = PetscLogFlops(4*nPoints);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -356,6 +390,8 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nSource, Vec s
   ierr = VecRestoreArrayRead(srcCharges, &srcChargesArray);CHKERRQ(ierr);
 
   ierr = VecDestroy(&EnpVals); CHKERRQ(ierr);
+
+  ierr = PetscLogFlops(count * (6 + 3*nSource));CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -408,6 +444,8 @@ PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem* e, PetscReal e
   ierr = VecAssemblyEnd  (extCoefs);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
 
+
+  ierr = PetscLogFlops(29*count);
   PetscFunctionReturn(0);
 }
 
