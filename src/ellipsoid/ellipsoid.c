@@ -1001,22 +1001,22 @@ PetscErrorCode calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm,
   //This comes from Romain Table II
   if(t == 'K') {
     m = r;
-    psi = pow(l, n-2*r);
+    psi = pow(l, n-2*r); countFlops++;
     type = 0;
   }
   else if(t == 'L') {
     m = n-r-1;
-    psi = pow(l, 1-n+2*r)*signh*sqrt(fabs(l2-e->h2));
+    psi = pow(l, 1-n+2*r)*signh*sqrt(fabs(l2-e->h2)); countFlops += 3;
     type = 1;
   }
   else if(t == 'M') {
     m = n-r-1;
-    psi = pow(l, 1-n+2*r)*signk*sqrt(fabs(l2-e->k2));
+    psi = pow(l, 1-n+2*r)*signk*sqrt(fabs(l2-e->k2)); countFlops += 3;
     type = 2;
   }
   else if(t == 'N') {
     m = r-1;
-    psi = pow(l, n-2*r)*signh*signk*sqrt(fabs((l2-e->k2)*(l2-e->h2)));
+    psi = pow(l, n-2*r)*signh*signk*sqrt(fabs((l2-e->k2)*(l2-e->h2))); countFlops += 8;
     type = 3;
   }
   else
@@ -1024,11 +1024,11 @@ PetscErrorCode calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm,
   //if(isnan(psi))
   //printf("psi is nan and s: %15.15f\n", l);
   //Romain (30) \sum^m_{j=0} b_j (1 - \frac{\lambda^2}{h^2}) = \sum^m_{j=0} b_j \Lambda^j
-  double Lambda_Romain = (1.0 - (l2/e->h2));
+  double Lambda_Romain = (1.0 - (l2/e->h2)); 
 
   //b = B[tp]
   //double *b = (double*) malloc(sizeof(double)*(m+1));
-  double *b = e->Rconsts[n][type]+tp*(m+1);
+  double *b = e->Rconsts[n][type]+tp*(m+1); countFlops += 4;
   //for(int i=0; i<=m; ++i) {
   //memcpy(b, e->Rconsts[n][type]+tp*(m+1), sizeof(double)*(m+1));
     //}
@@ -1038,7 +1038,7 @@ PetscErrorCode calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm,
   //Romain p242 and Dassios (D9,D10 and their gamma in B16-B20)
   //for(int k=0; k<(m+1); ++k)
   //b[k] = b[k]/(b[(m+1)-1]/pow(-e->h2,(m+1)-1));
-  countFlops = 7;
+
   double P = b[m];
   for(int j=m-1; j>-1; --j) {
     P = P*Lambda_Romain + b[j];
@@ -1050,13 +1050,21 @@ PetscErrorCode calcLame(EllipsoidalSystem *e, int n, int p, double l, int signm,
   //printf("p: %d\n", p);
   
   *Enp = psi*P; countFlops++;
+  //printf("countFlops: %d\n", countFlops);
   
   ierr = PetscLogFlops(countFlops);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
-double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
+
+#undef __FUNCT__
+#define __FUNCT__ "calcLameDerivative"
+PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol)
 {
+  PetscErrorCode ierr;
+  PetscInt logFlops;
+  PetscFunctionBegin;
+  logFlops = 0;
   //Evaluate \frac{dE^p_n(l)}{dl}
   //The signs of \mu and \nu are necessary in order to determine the sign of \psi
   double signh, signk;
@@ -1076,7 +1084,7 @@ double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int sign
   double *B = getLameCoefficientMatrix(e, t, n, &bsize);
   
   int r = n/2;
-  double l2 = l*l;
+  double l2 = l*l; logFlops ++;
   
   int m;
   double psi, psider;
@@ -1087,47 +1095,58 @@ double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int sign
     psi    = pow(l, n-2*r);
     psider = (n-2*r)*pow(l, n-2*r-1);
     type = 0;
+    logFlops += 3;
   }
   else if(t == 'L') {
     m = n-r-1;
-    psi = pow(l, 1-n+2*r)*signh*sqrt(fabs(l2 - e->h2));
-    psider = (1-n+2*r)*pow(l, -n+2*r)*signh*sqrt(fabs(l2 - e->h2)) + pow(l, 2-n+2*r)*signh/sqrt(fabs(l2 - e->h2));
+    psi = pow(l, 1-n+2*r)*signh*sqrt(fabs(l2 - e->h2)); logFlops += 4;
+    psider = (1-n+2*r)*pow(l, -n+2*r)*signh*sqrt(fabs(l2 - e->h2)) + pow(l, 2-n+2*r)*signh/sqrt(fabs(l2 - e->h2)); logFlops += 12;
     type = 1;
   }
   else if(t == 'M') {
     m = n-r-1;
-    psi    = pow(l, 1-n+2*r)*signk*sqrt(fabs(l2 - e->k2));
-    psider = (1-n+2*r)*pow(l, -n+2*r)*signk*sqrt(fabs(l2 - e->k2)) + pow(l, 2-n+2*r)*signk/sqrt(fabs(l2 - e->k2));
+    psi    = pow(l, 1-n+2*r)*signk*sqrt(fabs(l2 - e->k2)); logFlops += 4;
+    psider = (1-n+2*r)*pow(l, -n+2*r)*signk*sqrt(fabs(l2 - e->k2)) + pow(l, 2-n+2*r)*signk/sqrt(fabs(l2 - e->k2)); logFlops += 12;
     type = 2;
   }
   else if(t == 'N') {
     m = r-1;
-    psi    = pow(l, n-2*r)*signh*signk*sqrt(fabs((l2 - e->k2)*(l2 - e->h2)));
+    psi    = pow(l, n-2*r)*signh*signk*sqrt(fabs((l2 - e->k2)*(l2 - e->h2))); logFlops += 8;
     psider = ((n-2*r)*pow(l, n-2*r-1)*signh*signk*sqrt(fabs((l2 - e->k2)*(l2 - e->h2))) +
 	      pow(l, n-2*r+1)*signh*signk*sqrt(fabs((l2 - e->k2)/(l2 - e->h2))) +
-	      pow(l, n-2*r+1)*signh*signk*sqrt(fabs((l2 - e->h2)/(l2 - e->k2))));
+	      pow(l, n-2*r+1)*signh*signk*sqrt(fabs((l2 - e->h2)/(l2 - e->k2)))); logFlops += 24;
     type = 3;
   }
   else
     printf("Invalid Lame type\n");
   
   //Romain (30) \sum^m_{j=0} b_j (1 - \frac{\lambda^2}{h^2}) = \sum^m_{j=0} b_j \Lambda^j
-  double Lambda_Romain = (1.0 - (l2/e->h2)); //Romain bottom of p.252
+  double Lambda_Romain = (1.0 - (l2/e->h2)); logFlops += 2; //Romain bottom of p.252
   //b = B[tp]
   double *b = (double*) malloc(sizeof(double)*(m+1));
   memcpy(b, e->Rconsts[n][type]+tp*(m+1), sizeof(double)*(m+1));
   double P = b[m];
   for(int j=m-1; j>-1; --j)
-    P = P*Lambda_Romain + b[j];
+    P = P*Lambda_Romain + b[j]; logFlops += 2;
   //P' = \sum^{m-1}_{k=0} c_k \Lambda^k where c_k = b_{k+1} (-2 (k+1) \frac{\lambda}{h^2}) 
-  double Pder = b[m]*(-2*m*l/e->h2);
+  double Pder = b[m]*(-2*m*l/e->h2); logFlops += 4;
   free(b);
   free(B);
-  return psider*P + psi*Pder;
+
+  *sol = psider*P + psi*Pder;
+  
+  ierr = PetscLogFlops(logFlops);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
-void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
+#undef __FUNCT__
+#define __FUNCT__ "integrand"
+PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
 {
+  PetscErrorCode ierr;
+  PetscInt countFlops;
+  PetscFunctionBegin;
+  countFlops = 0;
   mpfr_t *temp = &((*ctx).e->temp1);
   mpfr_d_div(*temp, 1.0, *x, MPFR_RNDN);
   double s = mpfr_get_d(*temp, MPFR_RNDZ);
@@ -1147,6 +1166,9 @@ void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
   
   mpfr_d_div(*val, 1.0, *val, MPFR_RNDN);
   //printf("\n\n\nVAL: %15.15f\n\n\n", mpfr_get_d(*val, MPFR_RNDN));
+  
+  ierr = PetscLogFlops(12);
+  PetscFunctionReturn(0);
 }
 
 /*
@@ -1186,7 +1208,7 @@ PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, in
   mpfr_set_d(*b, 1.0, MPFR_RNDN);
   mpfr_div_d(*b, *b, l, MPFR_RNDN);
   //printf("a: %15.15f\nb: %15.15f\n", mpfr_get_d(*a, MPFR_RNDN), mpfr_get_d(*b, MPFR_RNDN));
-  int err = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*))integrand, e, *a, *b, 14, sol, &ctx);
+  int err = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*))integrand, e, *a, *b, 14, sol, &ctx);
   if(err)
     printf("integral failed\n");
   //printf("the integral is: %15.15f\n", *sol);
@@ -1195,19 +1217,36 @@ PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, in
   PetscFunctionReturn(0);
 }
 
-double calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn)
+
+#undef __FUNCT__
+#define __FUNCT__ "calcIDerivative"
+PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *Ideriv)
 {
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
   //Evaluate \frac{dI^p_n(l)}{dl} = \frac{-1}{(E^p_n(l))^2 \sqrt{l^2 - k^2}\sqrt{l^2 - h^2}}
   double l2 = l*l;
   double k2 = e->k2;
   double h2 = e->h2;
   double E;
   calcLame(e, n, p, l, signm, signn, &E);
-  return -1.0 / (E*E*sqrt(l2 - k2)*sqrt(l2 - h2));
+  *Ideriv = -1.0 / (E*E*sqrt(l2 - k2)*sqrt(l2 - h2));
+
+  ierr = PetscLogFlops(9);
+  PetscFunctionReturn(0);
 }
 
-void normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
+
+#undef __FUNCT__
+#define __FUNCT__ "normFunction1"
+PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
 {
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
   int n = (*ctx).n;
   int p = (*ctx).p;
   int numeratorType = (*ctx).numeratorType;
@@ -1223,19 +1262,27 @@ void normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
   mpfr_sub_d(*temp, *temp, e->h2, MPFR_RNDN);
   mpfr_mul(*val, *temp, *val, MPFR_RNDN);
   mpfr_mul_d(*val, *val, (double) denomSign, MPFR_RNDN);
-  if(mpfr_get_d(*val, MPFR_RNDN) < 0 && fabs(mpfr_get_d(*val, MPFR_RNDN)) < tol)
+  flopCount += 5;
+  if(mpfr_get_d(*val, MPFR_RNDN) < 0 && fabs(mpfr_get_d(*val, MPFR_RNDN)) < tol) {
     mpfr_mul_d(*val, *val, -1.0, MPFR_RNDN);
+    flopCount++;
+  }
   mpfr_sqrt(*temp, *val, MPFR_RNDN);
   mpfr_set_d(*val, top, MPFR_RNDN);
   mpfr_mul_d(*val, *val, top, MPFR_RNDN);
+  flopCount += 3;
   if(numeratorType == 1) {
     mpfr_mul(*val, *val, *x, MPFR_RNDN);
     mpfr_mul(*val, *val, *x, MPFR_RNDN);
+    flopCount += 2;
   }
   //printf("val before is %8.8e\n", mpfr_get_d(*val, MPFR_RNDN));
   //printf("denom before is %8.8e\n", mpfr_get_d(*temp, MPFR_RNDN));
-  mpfr_div(*val, *val, *temp, MPFR_RNDN);
+  mpfr_div(*val, *val, *temp, MPFR_RNDN); flopCount++;
   //printf("val is %8.8e\n", mpfr_get_d(*val, MPFR_RNDN));
+
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 void normFunction2(mpfr_t *x, mpfr_t *val, FuncInfo3 *ctx)
@@ -1283,8 +1330,14 @@ void normFunction2(mpfr_t *x, mpfr_t *val, FuncInfo3 *ctx)
 }
 
 
-double calcNormalization(EllipsoidalSystem *e, int n, int p)
+#undef __FUNCT__
+#define __FUNCT__ "calcNormalization"
+PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *normConst)
 {
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+
   //double h = e->h;
   //double h2 = e->h2;
   //double k = e->k;
@@ -1301,16 +1354,20 @@ double calcNormalization(EllipsoidalSystem *e, int n, int p)
   mpfr_t *mpfrzero = &(e->mpfrzero);
   mpfr_t *mpfrone  = &(e->mpfrone);
   
-  err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals, &ctx1);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals, &ctx1);
 
-  err[1] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals+1, &ctx2);
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals+1, &ctx2);
 
-  err[2] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+2, &ctx3);
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+2, &ctx3);
 
-  err[3] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+3, &ctx4);
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+3, &ctx4);
 
-  return 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);
+  *normConst = 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);
 
+
+  ierr = PetscLogFlops(4);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+  /*
   for(int i=0; i<4; ++i) {
     //printf("integrals[i] = %8.8e\n", i, integrals[i]);
     if(err[i])
@@ -1330,10 +1387,10 @@ double calcNormalization(EllipsoidalSystem *e, int n, int p)
   mpfr_set(*endpt, e->hp_k2, MPFR_RNDN);
   mpfr_div(*endpt, *endpt, e->hp_h2, MPFR_RNDN);
   mpfr_d_sub(*endpt, 1.0, *endpt, MPFR_RNDN);
-  err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2, &ctx20);
-  err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2+1, &ctx21);
-  err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+2, &ctx30);
-  err[0] = integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+3, &ctx31);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2, &ctx20);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2+1, &ctx21);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+2, &ctx30);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+3, &ctx31);
 
   //Multiply by prefactor h/2
   for(int i=0; i<4; ++i) {
@@ -1393,11 +1450,12 @@ double calcNormalization(EllipsoidalSystem *e, int n, int p)
     return 8 * (M_PI/2.0)*1e-14;
   }
   return 8 * (M_PI/2.0)*(alpha*B - beta*A);
+  */
 }
 
+//calculate the eigenvalues of the surface operator
 #undef __FUNCT__
 #define __FUNCT__ "calcSurfaceOperatorEigenvalues"
-//calculate the eigenvalues of the surface operator
 PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol)
 {
   PetscErrorCode ierr;
@@ -1411,7 +1469,8 @@ PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p
   ierr = calcI(e, n, p, l, signm, signn, &Inp);CHKERRQ(ierr);
   double Enp;
   ierr = calcLame(e, n, p, l, signm, signn, &Enp);CHKERRQ(ierr);
-  double EnpDer = calcLameDerivative(e, n, p, l, signm, signn);
+  double EnpDer;
+  calcLameDerivative(e, n, p, l, signm, signn, &EnpDer);
 
   *sol = (2.0*a*b*c*(EnpDer/a)*Inp*Enp - 1)/2;
   
@@ -1419,8 +1478,16 @@ PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p
   PetscFunctionReturn(0);
 }
 
-int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx) 
+
+#undef __FUNCT__
+#define __FUNCT__ "integrateMPFR"
+PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx) 
 {
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
   //printf("can we get out of here?\n");
   const int  safetyFactor = 2;    /* Calculate abcissa until 2*p digits */
   int        p      = e->precision;   /* Digits of precision in the evaluation */
@@ -1466,7 +1533,7 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
   mpfr_set_d(*psum,  0.0, MPFR_RNDN);
   mpfr_set_d(*h,     1.0, MPFR_RNDN);
   mpfr_const_pi(*pi2, MPFR_RNDN);
-  mpfr_mul_d(*pi2, *pi2, 0.5, MPFR_RNDN);
+  mpfr_mul_d(*pi2, *pi2, 0.5, MPFR_RNDN); flopCount += 5;
 
   /* Center term */
   //mpfr_set_d(*lx, 0.5*(b+a), MPFR_RNDN);
@@ -1475,7 +1542,7 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
   mpfr_mul_d(*lx, *lx, .5, MPFR_RNDN);
   f(lx, sum, ctx);
   mpfr_mul(*sum, *sum, *alpha, MPFR_RNDN);
-  mpfr_mul(*sum, *sum, *pi2, MPFR_RNDN);
+  mpfr_mul(*sum, *sum, *pi2, MPFR_RNDN); flopCount += 4;
 
 
   //DELETE LATER
@@ -1498,7 +1565,7 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
     mpfr_set(*psum, *osum, MPFR_RNDN);
     mpfr_set(*osum, *sum, MPFR_RNDN);
     mpfr_mul_d(*h,  *h,  0.5, MPFR_RNDN);
-    mpfr_mul_d(*sum, *sum, 0.5, MPFR_RNDN);
+    mpfr_mul_d(*sum, *sum, 0.5, MPFR_RNDN); flopCount += 2;
 
     do {
       //printf("doot\n");
@@ -1514,20 +1581,20 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
       mpfr_cosh(*tmp, *msinh, MPFR_RNDN);
       mpfr_sqr(*tmp, *tmp, MPFR_RNDN);
       mpfr_mul(*wk, *wk, *mcosh, MPFR_RNDN);
-      mpfr_div(*wk, *wk, *tmp, MPFR_RNDN);
+      mpfr_div(*wk, *wk, *tmp, MPFR_RNDN); flopCount += 8;
       /* Abscissa */
       mpfr_set_d(*yk, 1.0, MPFR_RNDZ);
       mpfr_cosh(*tmp, *msinh, MPFR_RNDN);
       mpfr_div(*yk, *yk, *tmp, MPFR_RNDZ);
       mpfr_exp(*tmp, *msinh, MPFR_RNDN);
-      mpfr_div(*yk, *yk, *tmp, MPFR_RNDZ);
+      mpfr_div(*yk, *yk, *tmp, MPFR_RNDZ); flopCount += 4;
       /* Quadrature points */
       mpfr_sub_d(*lx, *yk, 1.0, MPFR_RNDZ);
       mpfr_mul(*lx, *lx, *alpha, MPFR_RNDU);
       mpfr_add(*lx, *lx, *beta, MPFR_RNDU);
       mpfr_d_sub(*rx, 1.0, *yk, MPFR_RNDZ);
       mpfr_mul(*rx, *rx, *alpha, MPFR_RNDD);
-      mpfr_add(*rx, *rx, *beta, MPFR_RNDD);
+      mpfr_add(*rx, *rx, *beta, MPFR_RNDD); flopCount += 4;
       //printf("poot\n");
       /* Evaluation */
       f(lx, lval, ctx);
@@ -1557,14 +1624,14 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
 	mpfr_add(*sum, *sum, *tmp, MPFR_RNDN);
 	mpfr_abs(*tmp, *tmp, MPFR_RNDN);
 	mpfr_max(*maxTerm, *maxTerm, *tmp, MPFR_RNDN);
-	mpfr_max(*curTerm, *curTerm, *tmp, MPFR_RNDN);
+	mpfr_max(*curTerm, *curTerm, *tmp, MPFR_RNDN); flopCount += 8;
 	counter += 2;
       }
       /* if (l == 1) printf("k is %d and sum is %15.15f and *wk is %15.15f\n", k, sum, *wk); */
       ++k;
       /* Only need to evaluate every other point on refined levels */
       if (l != 1) ++k;
-      mpfr_log10(*tmp, *wk, MPFR_RNDN);
+      mpfr_log10(*tmp, *wk, MPFR_RNDN); flopCount++;
       mpfr_abs(*tmp, *tmp, MPFR_RNDN);
     } while (mpfr_get_d(*tmp, MPFR_RNDN) < safetyFactor*p); /* Only need to evaluate sum until weights are < 32 digits\
 							      of precision */
@@ -1582,7 +1649,7 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
     d3 = mpfr_get_d(*tmp, MPFR_RNDN) - p;
     mpfr_log10(*tmp, *curTerm, MPFR_RNDN);
     d4 = mpfr_get_d(*tmp, MPFR_RNDN);
-    d  = (int) fabs(min(0, max(max(max((d1*d1)/d2, 2*d1), d3), d4)));
+    d  = (int) fabs(min(0, max(max(max((d1*d1)/d2, 2*d1), d3), d4))); flopCount += 9;
     
   } while (d < digits && l < maxL);
 
@@ -1601,12 +1668,21 @@ int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_
   */
   //printf("total is: %d\n", counter);
   free(SUMS);
-  return 0;
+
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+
 }
 
-int integrateMidpoint(void (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int n, double *integral, void *ctx)
+#undef __FUNCT__
+#define __FUNCT__ "integrateMidpoint"
+PetscErrorCode integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int n, double *integral, void *ctx)
 {
-
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
   int digs = 32;
 
   mpfr_t delT, sum, fval, xval;
@@ -1623,7 +1699,7 @@ int integrateMidpoint(void (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int
   mpfr_div_ui(delT, delT, n, MPFR_RNDN);
   //start xval at a+.5*delT
   mpfr_mul_d(xval, delT, 0.5, MPFR_RNDN);
-  mpfr_add(xval, a, xval, MPFR_RNDN);
+  mpfr_add(xval, a, xval, MPFR_RNDN); flopCount += 4;
 
   for(int i=0; i < n; ++i) {
 
@@ -1636,13 +1712,13 @@ int integrateMidpoint(void (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int
     mpfr_add(sum, sum, fval, MPFR_RNDN);
     
     //increment xval
-    mpfr_add(xval, xval, delT, MPFR_RNDN);
+    mpfr_add(xval, xval, delT, MPFR_RNDN); flopCount += 2;
 
   }
-  mpfr_mul(sum, sum, delT, MPFR_RNDN);
+  mpfr_mul(sum, sum, delT, MPFR_RNDN); flopCount ++;
   
   *integral = mpfr_get_d(sum, MPFR_RNDN);
 
-  return 0;
-
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }

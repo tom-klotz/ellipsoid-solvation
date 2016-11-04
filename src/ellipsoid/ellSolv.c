@@ -31,7 +31,8 @@ double calcGnp(EllipsoidalSystem *e, Point *positions, double *charges, int nCha
   clock_t start, diff;
   int msec;
   start = clock();
-  double normConstant = calcNormalization(e, n, p);
+  double normConstant;
+  calcNormalization(e, n, p, &normConstant);
   diff = clock() - start;
   msec = diff * 1000 / CLOCKS_PER_SEC;
   //printf("normConstant took %d seconds and %d milliseconds\n", msec/1000, msec%1000);
@@ -79,8 +80,10 @@ void calcBnpAndCnpFromGnp(Problem *problem, int n, int p, double Gnp, double *Bn
   double Ia;
   calcI(problem->e, n, p, e->a, 1, 1, &Ia);
   double Fa = (2*n + 1) * Ea * Ia;
-  double EaDer = calcLameDerivative(e, n, p, e->a, 1, 1);
-  double IaDer = calcIDerivative(e, n, p, e->a, 1, 1);
+  double EaDer;
+  calcLameDerivative(e, n, p, e->a, 1, 1, &EaDer);
+  double IaDer;
+  calcIDerivative(e, n, p, e->a, 1, 1, &IaDer);
   double FaDer = (2*n+1) * (Ea*IaDer + EaDer*Ia); //chain rule?
   double e1 = problem->e1;
   double e2 = problem->e2;

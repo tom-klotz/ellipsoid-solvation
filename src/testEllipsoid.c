@@ -251,12 +251,13 @@ int testNormalization()
 			 4*M_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
 			 4*M_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
 			 4*M_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
-  double value, error;
+  double value, estimate, error;
   int counter = 0;
   for(int n=0; n<3; ++n) {
     for(int p=0; p<2*n+1; ++p) {
       value = analytic[counter];
-      error = calcNormalization(&e, n, p) - value;
+      calcNormalization(&e, n, p, &estimate);
+      error = estimate - value;
       if(fabs(error) > tol) {
 	printf("testnormalization failed iteration %d at (n,p) = (%d,%d) with error %8.8e\n", counter, n, p, fabs(error));
 	return 0;
@@ -322,13 +323,13 @@ int testSurfaceOperatorEigenvalues()
 
   //Integrals are from Ritter, need to transform integrals to finite interval
   FuncInfo4 ctx = { &e, a*a, b*b, c*c, a*a };
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[0] = (a*b*c * integral - 1.0)/2.0;
   ctx.botVar = b*b;
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[1] = (a*b*c * integral - 1.0)/2.0;
   ctx.botVar = c*c;
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[2] = (a*b*c * integral - 1.0)/2.0;
 
 
@@ -369,8 +370,8 @@ int compareIntegration()
 
   double integralMPFR, integralMidpoint;
 
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
-  integrateMidpoint((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
+  integrateMidpoint((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
 
   printf("ze MPFR integral is: %15.15f\n", integralMPFR);
   printf("ze Midpoint integral is: %15.15f\n", integralMidpoint);
