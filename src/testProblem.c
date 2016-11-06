@@ -98,8 +98,6 @@ void runTest1() {
   }
 
 
-
-
   //set up problem
   SProblem sProblem = {.positions = sPoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .b = 3.0};
   Problem  eProblem = {.positions = ePoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .e = &e};
@@ -1405,7 +1403,7 @@ PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal 
   }
   ierr = VecAssemblyBegin(tarXYZ);CHKERRQ(ierr); ierr = VecAssemblyEnd(tarXYZ);CHKERRQ(ierr);
   // calculate the solvation potential
-  VecView(sourceXYZ, PETSC_VIEWER_STDOUT_SELF);
+  //VecView(sourceXYZ, PETSC_VIEWER_STDOUT_SELF);
   ierr = CalcEllipsoidSolvationPotential( a , b , c,
 					  eps1, eps2,
 					  nSrc, sourceXYZ, sourceMag,
@@ -1436,12 +1434,64 @@ PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal 
 
 
 #undef __FUNCT__
+#define __FUNCT__ "numChargesPlot"
+PetscErrorCode numChargesPlot(PetscInt nMin, PetscInt nMax, PetscInt nStep)
+{
+  PetscErrorCode ierr;
+  PetscInt Nmax = 4;
+  //PetscInt nSrc = 20;
+  PetscInt nx   = 7;
+  PetscReal xl  = -4.6;
+  PetscReal xr  = 4.6;
+  PetscInt ny   = 7;
+  PetscReal yl  = -4.6;
+  PetscReal yr  = 4.6;
+  PetscReal zConst = .1;
+  PetscInt nSource;
+  PetscLogStage *chargeStages;
+  PetscStageLog stageLog;
+  PetscFunctionBegin;
+
+  PetscInt count = 0;
+  for(nSource = nMin; nSource <= nMax; nSource += nStep) {
+    count++;
+  }
+  ierr = PetscMalloc1(sizeof(PetscLogStage)*count, &chargeStages);
+  char bStr[40] = "Num Charges: %d";
+  char indvStr[40];
+  count = 0;
+  for(nSource = nMin; nSource <= nMax; nSource += nStep) {
+    sprintf(indvStr, bStr, nSource);
+    ierr = PetscLogStageRegister(indvStr, chargeStages+count);CHKERRQ(ierr);
+    count++;
+  }
+  count = 0;
+  for(nSource = nMin; nSource <= nMax; nSource += nStep) {
+    printf("wow\n");
+    ierr = PetscLogStagePush(chargeStages[count]);CHKERRQ(ierr);
+    ierr = EasyExample(Nmax, nSource, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+    ierr = PetscLogStagePop();CHKERRQ(ierr);
+    count++;
+  }
+
+  ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);
+  count = 0;
+  for(nSource = nMin; nSource <= nMax; nSource += nStep) {
+    ierr = PetscPrintf(PETSC_COMM_WORLD, "n = %d\nflops = %4.4e\n", nSource, stageLog->stageInfo[chargeStages[count]].perfInfo.flops);CHKERRQ(ierr);
+    count++;
+  }
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
 #define __FUNCT__ "main"
 PetscErrorCode main( int argc, char **argv )
 {
 
   PetscErrorCode ierr;
-
+  
+  PetscFunctionBeginUser;
   //initialize Petsc
   ierr = PetscInitialize(&argc, &argv, NULL, NULL); CHKERRQ(ierr);
   ierr = PetscLogDefaultBegin(); CHKERRQ(ierr);  
@@ -1455,18 +1505,21 @@ PetscErrorCode main( int argc, char **argv )
   //RunArg();
   //ierr = RunArgTester(); CHKERRQ(ierr);
   //PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
-  PetscInt Nmax = 5;
-  PetscInt nSrc = 10;
+  /*
+  PetscInt Nmax = 10;
+  PetscInt nSrc = 100;
   PetscInt nx   = 10;
   PetscReal xl  = -4.6;
   PetscReal xr  = 4.6;
   PetscInt ny   = 10;
-  PetscReal yl  = -3;
-  PetscReal yr  = 3;
+  PetscReal yl  = -4.6;
+  PetscReal yr  = 4.6;
   PetscReal zConst = .1;
-  ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+  */
+  //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
 
 
-  
+  ierr = numChargesPlot(100, 500, 100);
   ierr = PetscFinalize();CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }

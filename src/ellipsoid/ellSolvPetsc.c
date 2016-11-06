@@ -10,6 +10,16 @@
 
 
 #undef __FUNCT__
+#define __FUNCT__ "CalcEllipsoidFreeEnergy"
+PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscReal tol, PetscInt Nmax, Vec targetSol)
+{
+
+
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
 #define __FUNCT__ "CalcEllipsoidSolvationPotential"
 PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscInt nTarget, Vec targetXYZ, PetscInt Nmax, Vec targetSol)
 {
@@ -29,14 +39,12 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   PetscScalar *targetSolArray;
   const PetscScalar *EnpValsArray, *FnpValsArray;
 
-  PetscLogStage stageIntSolids, stageExtSolids;
+  //PetscLogStage stageIntSolids, stageExtSolids;
   PetscLogEvent *INTERIOR_FLOPS;
   PetscLogEvent *EXTERIOR_FLOPS;
-  PetscLogDouble user_log_flops;
+  //PetscLogDouble user_log_flops;
   PetscFunctionBegin;
 
-  ierr = PetscLogStageRegister("Solid Int Harmonic Flops", &stageIntSolids);CHKERRQ(ierr);
-  ierr = PetscLogStageRegister("Solid Ext Harmonic Flops", &stageExtSolids);CHKERRQ(ierr);
   
   initEllipsoidalSystem(&e, a, b, c);
 
@@ -151,17 +159,17 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
       // calc solid harmonics for interior,exterior points
 
 
-      ierr = PetscLogStagePush(stageIntSolids);CHKERRQ(ierr);
+      //ierr = PetscLogStagePush(stageIntSolids);CHKERRQ(ierr);
       ierr = PetscLogEventBegin(INTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
       ierr = CalcSolidInteriorHarmonicVec(&e, intPts, tarIntEll, n, p, EnpVals);CHKERRQ(ierr);
       ierr = PetscLogEventEnd  (INTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
-      ierr = PetscLogStagePop();
+      //ierr = PetscLogStagePop();
       
-      ierr = PetscLogStagePush(stageExtSolids);CHKERRQ(ierr);
+      //ierr = PetscLogStagePush(stageExtSolids);CHKERRQ(ierr);
       ierr = PetscLogEventBegin(EXTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
       ierr = CalcSolidExteriorHarmonicVec(&e, extPts, tarExtEll, n, p, FnpVals);CHKERRQ(ierr);
       ierr = PetscLogEventEnd(EXTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
-      ierr = PetscLogStagePop();CHKERRQ(ierr);
+      //ierr = PetscLogStagePop();CHKERRQ(ierr);
       
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
@@ -171,17 +179,17 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
 
 	if(isExt[k] == 0) { // interior points
 	  //printf("E%d%d: %15.15f\nBnp %d%d: %15.15f\n\n", n, p, n, p, EnpValsArray[intInd], reactCoefsArray[ind]);
-	  targetSolArray[k] += reactCoefsArray[ind]*EnpValsArray[intInd];
+	  //targetSolArray[k] += reactCoefsArray[ind]*EnpValsArray[intInd];
 	  //ierr = CalcSolidInterior
-	  //targetSolArray[k] += Gnp*EnpValsArray[intInd];
-	  //targetSolArray[k] += 0;
+	  targetSolArray[k] += Gnp*EnpValsArray[intInd];
+	  //targetSolArray[k] += 1;
 	  intInd++;
 	}
 	else { // exterior points
 	  //printf("F%d%d: %15.15f\nCnp %d%d: %15.15f\n\n", n, p, n, p, FnpValsArray[intInd], extCoefsArray[ind]);
-	  targetSolArray[k] += extCoefsArray[ind]*FnpValsArray[extInd];
-	  //targetSolArray[k] += (Gnp*FnpValsArray[extInd])/eps1;
-	  targetSolArray[k] += 0;
+	  //targetSolArray[k] += extCoefsArray[ind]*FnpValsArray[extInd];
+	  targetSolArray[k] += (Gnp*FnpValsArray[extInd])/eps1;
+	  //targetSolArray[k] += 0;
 	  extInd++;
 	}
       }
@@ -196,11 +204,23 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
 
   ierr = VecRestoreArray(targetSol, &targetSolArray);CHKERRQ(ierr);
   // restore read-only pointers for expansion coefficients
-  ierr = VecGetArrayRead(coulCoefs , &coulCoefsArray );CHKERRQ(ierr);
-  ierr = VecGetArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
-  ierr = VecGetArrayRead(extCoefs  , &extCoefsArray  );CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coulCoefs , &coulCoefsArray );CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(extCoefs  , &extCoefsArray  );CHKERRQ(ierr);
 
 
+  //output flops to file
+  FILE *fpext = fopen("flopsext.txt", "w");
+  FILE *fpint = fopen("flopsint.txt", "w");
+  PetscStageLog stageLog;  
+  ierr = PetscLogGetStageLog(&stageLog);CHKERRQ(ierr);
+
+  /*
+  for(int i=0; i<howmany; ++i) {
+    fprintf(fpext, "Ext %d = %.4e\n", i, stageLog->stageInfo[stageExtSolids].eventLog->eventInfo[EXTERIOR_FLOPS[i]].flops);
+    fprintf(fpint, "Int %d = %.4e\n", i, stageLog->stageInfo[stageIntSolids].eventLog->eventInfo[INTERIOR_FLOPS[i]].flops);
+  }
+  */
 
 
   ierr = VecDestroy(&tarIntXYZ);CHKERRQ(ierr);CHKERRQ(ierr);
