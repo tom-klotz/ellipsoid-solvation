@@ -1340,6 +1340,115 @@ PetscErrorCode RunArgTester()
 
 
 #undef __FUNCT__
+#define __FUNCT__ "RandomEllipsoidPoints"
+PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec xyz)
+{
+  PetscErrorCode ierr;
+  PetscReal r, theta, phi;
+  PetscReal x, y, z;
+  const PetscReal theta_min = 0;
+  const PetscReal theta_max = 2*PETSC_PI;
+  const PetscReal phi_min   = 0;
+  const PetscReal phi_max   = PETSC_PI;
+  const PetscReal r_min     = 0;
+  const PetscReal r_max     = 1;
+  PetscScalar *xyzArray;
+  PetscInt nvals;
+  PetscFunctionBegin;
+
+  /* petsc random object */
+  PetscRandom rnd;
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd, 0, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetFromOptions(rnd);CHKERRQ(ierr);
+
+  ierr = VecGetSize(xyz, &nvals);CHKERRQ(ierr);
+  ierr = VecGetArray(xyz, &xyzArray);CHKERRQ(ierr);
+  for(PetscInt i=0; i<nvals; ++i) {
+    ierr = PetscRandomGetValue(rnd, &r);CHKERRQ(ierr);
+    ierr = PetscRandomGetValue(rnd, &theta);CHKERRQ(ierr);
+    ierr = PetscRandomGetValue(rnd, &phi);CHKERRQ(ierr);
+
+    r = r_min + (r_max-r_min)*r;
+    theta = theta_min + (theta_max-theta_min)*theta;
+    phi = phi_min + (phi_max-phi_min)*phi;
+
+    x = a*r*PetscCosReal(theta)*PetscSinReal(phi);
+    y = b*r*PetscSinReal(theta)*PetscSinReal(phi);
+    z = c*r*PetscCosReal(theta);
+
+    xyzArray[3*i+0] = x;
+    xyzArray[3*i+1] = y;
+    xyzArray[3*i+2] = z;
+  }
+  ierr = VecRestoreArray(xyz, &xyzArray);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+#undef __FUNCT__
+#define __FUNCT__ "RandomMag"
+PetscErrorCode RandomMag(Vec mags)
+{
+  PetscErrorCode ierr;
+  PetscInt nMag, i;
+  PetscReal val;
+  PetscRandom rnd;
+  PetscScalar *magsArray;
+  PetscFunctionBegin;
+
+  ierr = VecGetSize(mags, &nMag);CHKERRQ(ierr);
+  
+  /* petsc random object */
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd, -1.0, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetFromOptions(rnd);CHKERRQ(ierr);
+  
+  ierr = VecGetArray(mags, &magsArray);CHKERRQ(ierr);
+  for(i=0; i<nMag; ++i) {
+    ierr = PetscRandomGetValue(rnd, &val);CHKERRQ(ierr);
+    magsArray[i] = val;
+  }
+  ierr = VecRestoreArray(mags, &magsArray);CHKERRQ(ierr);
+  
+  PetscFunctionReturn(0);
+}
+
+#undef __FUNCT__
+#define __FUNCT__ "WorkPrecExample"
+PetscErrorCode WorkPrecExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
+{
+  PetscErrorCode ierr;
+  Vec srcXYZ, srcMag, solution;
+  PetscReal xh, yh;
+  PetscReal xc, yc;
+  PetscReal xyz[3];
+  PetscReal randVal;
+  PetscInt ind;
+  PetscFunctionBegin;
+
+  const PetscReal eps1 = 4.0;
+  const PetscReal eps2 = 80.0;
+
+  const PetscReal a = 3.0;
+  const PetscReal b = 2.0;
+  const PetscReal c = 1.0;
+  
+  // initialize XYZ and solution vectors
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nSrc, &srcXYZ);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc  , &srcMag);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc, &solution);CHKERRQ(ierr);
+
+  /* generate random points inside of ellipsoid */
+  ierr = RandomEllipsoidPoints(a, b, c, srcXYZ);CHKERRQ(ierr);
+  ierr = RandomMag(srcMag);CHKERRQ(ierr);
+  ierr = VecView(srcMag, PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+
+  ierr = CalcEllipsoidFreeEnergy(a, b, c, eps1, eps2, nSrc, srcXYZ, srcMag, 1e-5, 4, solution);
+  //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+#undef __FUNCT__
 #define __FUNCT__ "EasyExample"
 /*
   Example is of a some charges
@@ -1433,6 +1542,8 @@ PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal 
 }
 
 
+
+
 #undef __FUNCT__
 #define __FUNCT__ "numChargesPlot"
 PetscErrorCode numChargesPlot(PetscInt nMin, PetscInt nMax, PetscInt nStep)
@@ -1505,21 +1616,21 @@ PetscErrorCode main( int argc, char **argv )
   //RunArg();
   //ierr = RunArgTester(); CHKERRQ(ierr);
   //PetscErrorCode EasyExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
-  /*
-  PetscInt Nmax = 10;
-  PetscInt nSrc = 100;
-  PetscInt nx   = 10;
+  
+  PetscInt Nmax = 4;
+  PetscInt nSrc = 10;
+  PetscInt nx   = 20;
   PetscReal xl  = -4.6;
   PetscReal xr  = 4.6;
-  PetscInt ny   = 10;
+  PetscInt ny   = 20;
   PetscReal yl  = -4.6;
   PetscReal yr  = 4.6;
   PetscReal zConst = .1;
-  */
+  
   //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+  ierr = WorkPrecExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
 
-
-  ierr = numChargesPlot(100, 500, 100);
+  //ierr = numChargesPlot(100, 500, 100);
   ierr = PetscFinalize();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

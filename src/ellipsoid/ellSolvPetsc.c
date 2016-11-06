@@ -10,13 +10,106 @@
 
 
 #undef __FUNCT__
-#define __FUNCT__ "CalcEllipsoidFreeEnergy"
-PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscReal tol, PetscInt Nmax, Vec targetSol)
+#define __FUNCT__ "InitEllipsoidalAndConvertPoints"
+PetscErrorCode InitEllipsoidalAndConvertPoints(EllipsoidalSystem *e, PetscReal a, PetscReal b, PetscReal c, Vec xyz, Vec ell)
 {
+  PetscErrorCode ierr;
+  PetscLogEvent initEvent;
+  PetscFunctionBegin;
 
-
+  ierr = PetscLogEventRegister("Init ellipsoidal system", 0, &initEvent);CHKERRQ(ierr);
+  ierr = PetscLogEventBegin(initEvent, 0, 0, 0, 0);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(e, a, b, c);CHKERRQ(ierr);
+  ierr = PetscLogEventEnd(initEvent, 0, 0, 0, 0);CHKERRQ(ierr);
+  
   PetscFunctionReturn(0);
 }
+
+#undef __FUNCT__
+#define __FUNCT__ "HowMany"
+PetscErrorCode HowMany(PetscInt N, PetscInt *num)
+{
+  PetscErrorCode ierr;
+  PetscInt n, p;
+  PetscFunctionBegin;
+  *num = 0;
+  for(n = 0; n <= N; ++n) {
+    for(p=0; p < 2*n + 1; ++p)
+      *num += 1;
+  }
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
+#define __FUNCT__ "CalcEllipsoidFreeEnergy"
+PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol)
+{
+  PetscErrorCode ierr;
+  EllipsoidalSystem e;
+  PetscReal x, y, z;
+  PetscInt n, p, npsize;
+  Vec srcEll, tarEll;
+  PetscScalar *tarEllArray;
+  Vec coulCoefs, reactCoefs, extCoefs;
+  const PetscScalar *coulCoefsArray, *reactCoefsArray, *extCoefsArray;
+  Vec EnpVals, FnpVals;
+  const PetscScalar *EnpValsArray, *FnpValsArray;
+  PetscScalar *tarSolArray;
+  PetscFunctionBegin;
+  
+  /* init ellipsoidal system */
+  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+
+  /* initialize expansion vectors */
+  ierr = HowMany(Nmax, &npsize);CHKERRQ(ierr);
+  //ierr = VecCreateSeq(PETSC_COMM_SELF, npsize, &coulCoefs);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npsize, &reactCoefs);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, npsize, &extCoefs);CHKERRQ(ierr);
+  
+  /* initialize point vectors */
+  ierr = VecDuplicate(srcXYZ, &srcEll);CHKERRQ(ierr);
+  ierr = VecDuplicate(srcEll, &tarEll);CHKERRQ(ierr);
+  
+  /* convert points from cartesian to ellipsoidal */
+  ierr = CartesianToEllipsoidalVec(&e, srcXYZ, srcEll);CHKERRQ(ierr);
+  ierr = VecCopy(srcEll, tarEll);CHKERRQ(ierr); //source+target same
+
+  /* Calculate Gnp */
+  ierr = CalcCoulombEllCoefs(&e, nSrc, srcEll, srcMag, Nmax, &coulCoefs);CHKERRQ(ierr);
+  /* calculate Bnp and Cnp */
+  ierr = CalcReactAndExtCoefsFromCoulomb(&e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
+
+  // create EnpVals and FnpVals vectors
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc, &EnpVals);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc, &FnpVals);CHKERRQ(ierr);
+  
+  // get read-only pointers for expansion coefficients
+  ierr = VecGetArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(extCoefs, &extCoefsArray);CHKERRQ(ierr);
+  // get write pointer for solution vector
+  ierr = VecZeroEntries(tarSol);CHKERRQ(ierr);
+  ierr = VecGetArray(tarSol, &tarSolArray);CHKERRQ(ierr);
+
+  PetscInt ind = 0;
+  for(n=0; n <= Nmax; ++n) {
+    for(p=0; p < 2*n+1; ++p) {
+      PetscReal Gnp =  coulCoefsArray[ind];
+      PetscReal Cnp =   extCoefsArray[ind];
+      PetscReal Bnp = reactCoefsArray[ind];
+      
+      ierr = CalcSolidInteriorHarmonicVec(&e, tarEll, n, p, EnpVals);CHKERRQ(ierr);
+      ierr = CalcSolidExteriorHarmonicVec(&e, tarEll, n, p, FnpVals);CHKERRQ(ierr);
+
+      ind++;
+    }
+  }
+  
+  
+  PetscFunctionReturn(0);
+}
+
 
 
 #undef __FUNCT__
@@ -161,13 +254,13 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
 
       //ierr = PetscLogStagePush(stageIntSolids);CHKERRQ(ierr);
       ierr = PetscLogEventBegin(INTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
-      ierr = CalcSolidInteriorHarmonicVec(&e, intPts, tarIntEll, n, p, EnpVals);CHKERRQ(ierr);
+      ierr = CalcSolidInteriorHarmonicVec(&e, tarIntEll, n, p, EnpVals);CHKERRQ(ierr);
       ierr = PetscLogEventEnd  (INTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
       //ierr = PetscLogStagePop();
       
       //ierr = PetscLogStagePush(stageExtSolids);CHKERRQ(ierr);
       ierr = PetscLogEventBegin(EXTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
-      ierr = CalcSolidExteriorHarmonicVec(&e, extPts, tarExtEll, n, p, FnpVals);CHKERRQ(ierr);
+      ierr = CalcSolidExteriorHarmonicVec(&e, tarExtEll, n, p, FnpVals);CHKERRQ(ierr);
       ierr = PetscLogEventEnd(EXTERIOR_FLOPS[ind],0,0,0,0);CHKERRQ(ierr);
       //ierr = PetscLogStagePop();CHKERRQ(ierr);
       
@@ -179,17 +272,17 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
 
 	if(isExt[k] == 0) { // interior points
 	  //printf("E%d%d: %15.15f\nBnp %d%d: %15.15f\n\n", n, p, n, p, EnpValsArray[intInd], reactCoefsArray[ind]);
-	  //targetSolArray[k] += reactCoefsArray[ind]*EnpValsArray[intInd];
+	  targetSolArray[k] += reactCoefsArray[ind]*EnpValsArray[intInd];
 	  //ierr = CalcSolidInterior
-	  targetSolArray[k] += Gnp*EnpValsArray[intInd];
+	  //targetSolArray[k] += Gnp*EnpValsArray[intInd];
 	  //targetSolArray[k] += 1;
 	  intInd++;
 	}
 	else { // exterior points
 	  //printf("F%d%d: %15.15f\nCnp %d%d: %15.15f\n\n", n, p, n, p, FnpValsArray[intInd], extCoefsArray[ind]);
 	  //targetSolArray[k] += extCoefsArray[ind]*FnpValsArray[extInd];
-	  targetSolArray[k] += (Gnp*FnpValsArray[extInd])/eps1;
-	  //targetSolArray[k] += 0;
+	  //targetSolArray[k] += (Gnp*FnpValsArray[extInd])/eps1;
+	  targetSolArray[k] += 0;
 	  extInd++;
 	}
       }
@@ -270,17 +363,20 @@ PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem* e, PetscReal lambda,
   ellPoints is ellPoints of size 3*nPoints containing ellipsoidal coordinates
   outputs solid harmonics to values of size nPoints
 */
-PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoints, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
+PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem* e, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
 {
   PetscErrorCode ierr;
   PetscInt signm = 1;
   PetscInt signn = 1;
+  PetscInt nPoints;
   PetscReal lambda, mu, nu;
   PetscReal eL, eM, eN;
   PetscReal Enp;
   const PetscScalar* ellPointsArray;
   PetscFunctionBegin;
-
+  ierr = VecGetSize(ellPoints, &nPoints);CHKERRQ(ierr);
+  nPoints = nPoints/3;
+  
   ierr = VecGetArrayRead(ellPoints, &ellPointsArray); CHKERRQ(ierr);
   for(PetscInt k=0; k<nPoints; ++k) {
     lambda = ellPointsArray[3*k+0];
@@ -335,16 +431,18 @@ PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem *e, PetscReal lambda,
 
 #undef __FUNCT__
 #define __FUNCT__ "CalcSolidExteriorHarmonicVec"
-PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, PetscInt nPoints, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
+PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, Vec ellPoints, PetscInt n, PetscInt p, Vec values)
 {
   PetscErrorCode ierr;
   PetscReal Enp, Inp, Fnp;
   PetscReal lambda, mu, nu;
   PetscInt signm;
   PetscInt signn;
+  PetscInt nPoints;
   const PetscScalar* ellPointsArray;
   PetscFunctionBegin;
-
+  ierr = VecGetSize(ellPoints, &nPoints);CHKERRQ(ierr);
+  nPoints = nPoints/3;
 
   ierr = VecGetArrayRead(ellPoints, &ellPointsArray);CHKERRQ(ierr);
   for(PetscInt k=0; k<nPoints; ++k) {
@@ -407,7 +505,7 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nSource, Vec s
     for(PetscInt p=0; p<2*n+1; ++p) {
       calcNormalization(e, n, p, &normConstant);
       
-      ierr = CalcSolidInteriorHarmonicVec(e, nSource, srcPoints, n, p, EnpVals);
+      ierr = CalcSolidInteriorHarmonicVec(e, srcPoints, n, p, EnpVals);
       
       ierr = VecGetArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);

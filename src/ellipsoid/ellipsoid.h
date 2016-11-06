@@ -110,12 +110,13 @@ PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int
 //PetscErrorCode integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
 PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
 PetscErrorCode integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
-
-
+PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
+PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
+PetscErrorCode getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size, double **mat);
 
 //functions
-void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
-void initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
+//void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
+//void initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
 void ellipsoidInitToOrderN(struct EllipsoidalSystem *s, int N);
 //void getCoefsK(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsL(EllipsoidalSystem *s, int n, double **coefs);
@@ -127,7 +128,7 @@ void cartesianToEllipsoidal(struct EllipsoidalSystem *s, struct Point *p);
 void cartesianToEllipsoidal2(struct EllipsoidalSystem *e, struct Point *p);
 char getLameTypeT(int n, int p);
 int getLameTypeTp(int n, int p);
-double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size);
+//double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size);
 double *computeLameCoefficients(struct EllipsoidalSystem *s, int n, int p, int *vecsize);
 //double calcLame(struct EllipsoidalSystem *s, int n, int p, double l, int signm, int signn);
 //double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);

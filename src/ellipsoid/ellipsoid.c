@@ -37,9 +37,15 @@ void matTranspose(double *A, int n) {
   free(cpy);
 }
 
-void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c)
-{
 
+#undef __FUNCT__
+#define __FUNCT__ "initEllipsoidalSystem"
+PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c)
+{
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
   //set pointers to NULL and maxN to 0
   s->Dconsts = NULL;
   s->Rconsts = NULL;
@@ -63,7 +69,7 @@ void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, doub
   s->h2 = a*a-b*b;
   s->h = sqrt(s->h2);
   s->k2 = a*a-c*c;
-  s->k = sqrt(s->k2);
+  s->k = sqrt(s->k2); flopCount += 8;
 
   mpfr_inits2(4*s->precision, s->hp_h2, s->hp_h, s->hp_k2, s->hp_k, NULL);
   //calculates high precision h2
@@ -71,18 +77,18 @@ void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, doub
   mpfr_mul_d(s->hp_h2, s->hp_h2, b, MPFR_RNDN);
   mpfr_set_d(temp, a, MPFR_RNDN);
   mpfr_mul_d(temp, temp, a, MPFR_RNDN);
-  mpfr_sub(s->hp_h2, temp, s->hp_h2, MPFR_RNDN);
+  mpfr_sub(s->hp_h2, temp, s->hp_h2, MPFR_RNDN); flopCount += 3;
 
   //calculates high precision h
-  mpfr_sqrt(s->hp_h, s->hp_h2, MPFR_RNDN);
+  mpfr_sqrt(s->hp_h, s->hp_h2, MPFR_RNDN); flopCount += 1;
 
   //calculates high precision k2
   mpfr_set_d(s->hp_k2, c, MPFR_RNDN);
   mpfr_mul_d(s->hp_k2, s->hp_k2, c, MPFR_RNDN);
-  mpfr_sub(s->hp_k2, temp, s->hp_k2, MPFR_RNDN);
+  mpfr_sub(s->hp_k2, temp, s->hp_k2, MPFR_RNDN); flopCount += 2;
   
   //calculates high precision k
-  mpfr_sqrt(s->hp_k, s->hp_k2, MPFR_RNDN);
+  mpfr_sqrt(s->hp_k, s->hp_k2, MPFR_RNDN); flopCount += 1;
 
 
   //initializes all the variables for integrate.
@@ -97,9 +103,10 @@ void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, doub
   mpfr_set_d(s->mpfrone , 1.0, MPFR_RNDN);
 
 
-  initRomainConstsToOrderN(s, N);
+  ierr = initRomainConstsToOrderN(s, N);CHKERRQ(ierr);
 
-
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
 }
 
 void ellipsoidInitToOrderN(EllipsoidalSystem *s, int N)
@@ -781,8 +788,16 @@ void getLameCoefficientMatrix2(struct EllipsoidalSystem *s, char t, int n, int *
   //return vr;
 }
 
-double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int* const mat_size)
+
+#undef __FUNCT__
+#define __FUNCT__ "getLameCoefficientMatrix"
+PetscErrorCode getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int* const mat_size, double **mat)
 {
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
   //For a given Lame type and ordr n, return the tridiagonal matrix
   //the size of the generated coefficient matrix is stored to mat_size
   //The eigenvectors of this matrix give the coefficients for the polynomaial P in the Lame function definition
@@ -790,7 +805,7 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
   //OPT: We could memorize this
   double alpha = s->h2;
   double beta = s->k2 - s->h2;
-  double gamma = alpha - beta;
+  double gamma = alpha - beta; flopCount += 2;
   int r = n/2;
   int size_d;
   double *d, *g, *f;
@@ -809,74 +824,94 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
   
   if (t == 'K') {
     //g missing last item
-    for(int k = 0; k < r; ++k)
-      g[k] = -(2*k + 2)*(2*k + 1)*beta;
+    for(int k = 0; k < r; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount++;
+    }
     if(n%2) { //n is odd
-      for(int k=0; k < r+1; ++k)
-	d[k] = ((2*r + 1)*(2*r + 2) - 4*k*k)*alpha + (2*k + 1)*(2*k + 1)*beta;
-      for(int k=1; k < r+1; ++k)
-	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) + 1); 
+      for(int k=0; k < r+1; ++k) {
+	d[k] = ((2*r + 1)*(2*r + 2) - 4*k*k)*alpha + (2*k + 1)*(2*k + 1)*beta; flopCount += 6;
+      }
+      for(int k=1; k < r+1; ++k) {
+	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) + 1); flopCount += 2;
+      }
     }
     else { //n is even
-      for(int k=0; k < r+1; ++k)
-	d[k] = 2*r*(2*r + 1)*alpha - 4*k*k*gamma;
-      for(int k=1; k < r+1; ++k)
-	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) - 1);
+      for(int k=0; k < r+1; ++k) {
+	d[k] = 2*r*(2*r + 1)*alpha - 4*k*k*gamma; flopCount += 5;
+      }
+      for(int k=1; k < r+1; ++k) {
+	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) - 1); flopCount += 2;
+      }
     }
   }
   else if (t == 'L') {
     //g missing last item
     for(int k = 0; k < n-r-1; ++k) {
-      g[k] = -(2*k + 2)*(2*k + 3)*beta;
+      g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
       //printf("g[%d] = %15.15f\n", k, g[k]);
       //printf("n, r, %d, %d\n", n, r);
       //printf("beta: %15.15f\n", beta);
     }
     if(n%2) { //n is odd
-      for(int k=0; k < n-r; ++k)
-	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 1)*(2*k + 1)*gamma;
-      for(int k=1; k < n-r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1);
+      for(int k=0; k < n-r; ++k) {
+	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 3;
+      }
     }
     else { //n is even
-      for(int k=0; k < n-r; ++k)
-	d[k] = (2*r*(2*r + 1) - (2*k + 1)*(2*k + 1))*alpha + (2*k + 2)*(2*k + 2)*beta;
-      for(int k=1; k < n-r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1);
+      for(int k=0; k < n-r; ++k) {
+	d[k] = (2*r*(2*r + 1) - (2*k + 1)*(2*k + 1))*alpha + (2*k + 2)*(2*k + 2)*beta; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+      }
     }
   }
   else if (t == 'M') {
     //g missing last item
-    for(int k = 0; k < n-r-1; ++k)
-      g[k] = -(2*k + 2)*(2*k + 1)*beta;
+    for(int k = 0; k < n-r-1; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount += 2;
+    }
     if(n%2) { //n is odd
-      for(int k=0; k < n-r; ++k)
-	d[k] = ((2*r + 1)*(2*r + 2) - (2*k + 1)*(2*k + 1))*alpha + 4*k*k*beta;
-      for(int k=1; k < n-r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1);
+      for(int k=0; k < n-r; ++k) {
+	d[k] = ((2*r + 1)*(2*r + 2) - (2*k + 1)*(2*k + 1))*alpha + 4*k*k*beta; flopCount += 5;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 2;
+      }
     }
     else { //n is even
-      for(int k=0; k < n-r; ++k)
-	d[k] = 2*r*(2*r + 1)*alpha - (2*k + 1)*(2*k + 1)*gamma;
-      for(int k=1; k < n-r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1);
+      for(int k=0; k < n-r; ++k) {
+	d[k] = 2*r*(2*r + 1)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+      }
     }
   }
   else if (t == 'N') {
     //g missing last item
-    for(int k = 0; k < r-1; ++k)
-      g[k] = -(2*k + 2)*(2*k + 3)*beta;
+    for(int k = 0; k < r-1; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
+    }
     if(n%2) { //n is odd
-      for(int k=0; k < r; ++k)
-	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 2)*(2*k + 2)*gamma;
-      for(int k=1; k < r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k +3);
+      for(int k=0; k < r; ++k) {
+	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 2)*(2*k + 2)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k +3); flopCount += 2;
+      }
     }
     else { //n is even
-      for(int k=0; k < r; ++k)
+      for(int k=0; k < r; ++k) {
 	d[k] = 2*r*(2*r + 1)*alpha - (2*k + 2)*(2*k + 2)*alpha + (2*k + 1)*(2*k + 1)*beta;
-      for(int k=1; k < r; ++k)
-	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1);
+	flopCount += 4;
+      }
+      for(int k=1; k < r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 3;
+      }
     }
   }
 
@@ -899,8 +934,8 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
 
   int lwork = 16*size_d;
   int info;
-  double *vr, *work, *wr, *wi;
-  vr     = (double*) malloc(sizeof(double)*size_d*size_d);
+  double *work, *wr, *wi;
+  *mat    = (double*) malloc(sizeof(double)*size_d*size_d);
   wr     = (double*) malloc(sizeof(double)*size_d);
   wi     = (double*) malloc(sizeof(double)*size_d);
   work   = (double*) malloc(sizeof(double)*lwork);
@@ -910,8 +945,11 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
   complefteig = 'N'; //don't compute left eigenvectors
   comprighteig = 'V'; //compute right eigenvectors
   
-
-  dgeev_( &complefteig, &comprighteig, &size_d, M, &size_d, wr, wi, NULL, &size_d, vr, &size_d, work, &lwork, &info );
+  /* #################################################### */
+  /* ############## NEED TO ADD FLOP COUNT HERE ######### */
+  dgeev_( &complefteig, &comprighteig, &size_d, M, &size_d, wr, wi, NULL, &size_d, *mat, &size_d, work, &lwork, &info );
+  /* #################################################### */
+  /* #################################################### */
   
   //matTranspose(vr, size_d);  
   //printf("hot\n");
@@ -931,17 +969,21 @@ double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int
   //b[k] = b[k]/(b[(m+1)-1]/pow(-e->h2,(m+1)-1));
   for(int i=0; i<size_d; ++i) {
     for(int k=0; k<size_d; ++k) {
-      vr[i*size_d+k] = vr[i*size_d+k]/(vr[(i*size_d) + size_d-1]/pow(-s->h2,(size_d)-1));
+      (*mat)[i*size_d+k] = (*mat)[i*size_d+k]/((*mat)[(i*size_d) + size_d-1]/pow(-s->h2,(size_d)-1));
+      flopCount += 3;
     }
   }
-  return vr;
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  //return vr;
+  PetscFunctionReturn(0);
 }
 
 double *computeLameCoefficients(EllipsoidalSystem *e, int n, int p, int *vecsize) {
   char t = getLameTypeT(n, p);
   int tp = getLameTypeTp(n, p);
   int bsize;
-  double *B = getLameCoefficientMatrix(e, t, n, &bsize);
+  double *B;
+  getLameCoefficientMatrix(e, t, n, &bsize, &B);
   //printf("B SIZE: %d\n", bsize);
   double *ret = (double*) malloc(sizeof(double)*bsize);
   memcpy(ret, B+tp*bsize, sizeof(double)*bsize);
@@ -950,25 +992,37 @@ double *computeLameCoefficients(EllipsoidalSystem *e, int n, int p, int *vecsize
   return ret;
 }
 
-void initRomainConstsToOrderN(EllipsoidalSystem *e, int N) {
 
+#undef __FUNCT__
+#define __FUNCT__ "initRomainConstsToOrderN"
+PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBegin;
+  
   if(e->Rconsts != NULL)
     free(e->Rconsts);
   e->Rconsts = (double***) malloc(sizeof(double**)*(N+1));
   //int* mat_size; *mat_size = 1;
   for(int n=0; n<=N; ++n) {
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
-    e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
+    //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
+    ierr = getLameCoefficientMatrix(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
     //printf("wowze\n");
     if(n != 0) {
-      e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
-      e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
+      //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
+      ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
+      //e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
+      ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
       if(n != 1) {
-	e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
+	//e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
+	ierr = getLameCoefficientMatrix(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
       }
     }
   }
-  
+
+  ierr = PetscLogFlops(0);
+  PetscFunctionReturn(0);
 }
 
 
@@ -1085,7 +1139,8 @@ PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, 
   int tp = getLameTypeTp(n, p);
   
   int bsize;
-  double *B = getLameCoefficientMatrix(e, t, n, &bsize);
+  double *B;
+  ierr = getLameCoefficientMatrix(e, t, n, &bsize, &B);CHKERRQ(ierr);
   
   int r = n/2;
   double l2 = l*l; logFlops ++;
@@ -1130,8 +1185,10 @@ PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, 
   double *b = (double*) malloc(sizeof(double)*(m+1));
   memcpy(b, e->Rconsts[n][type]+tp*(m+1), sizeof(double)*(m+1));
   double P = b[m];
-  for(int j=m-1; j>-1; --j)
-    P = P*Lambda_Romain + b[j]; logFlops += 2;
+  for(int j=m-1; j>-1; --j) {
+    P = P*Lambda_Romain + b[j];
+    logFlops += 2;
+  }
   //P' = \sum^{m-1}_{k=0} c_k \Lambda^k where c_k = b_{k+1} (-2 (k+1) \frac{\lambda}{h^2}) 
   double Pder = b[m]*(-2*m*l/e->h2); logFlops += 4;
   free(b);

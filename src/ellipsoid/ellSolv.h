@@ -14,10 +14,10 @@ typedef struct Problem {
 
 PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscInt, Vec, Vec, PetscInt, Vec, PetscInt, Vec);
 PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
-PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem*, Vec, PetscInt, PetscInt, Vec);
 PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, PetscInt, Vec*);
 PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
-PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem*, PetscInt, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem*, Vec, PetscInt, PetscInt, Vec);
 PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem*, PetscReal, PetscReal, PetscInt, Vec, Vec, Vec);
 
 
