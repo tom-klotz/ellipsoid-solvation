@@ -242,15 +242,15 @@ int testNormalization()
   double hx = sqrt(b*b - c*c);
   double hy = e.k;
   double hz = e.h;
-  double analytic[9] = { 4*M_PI,
-			 4*M_PI/3 * hy*hy*hz*hz,
-			 4*M_PI/3 * hx*hx*hz*hz,
-			 4*M_PI/3 * hx*hx*hy*hy,
-			 -8*M_PI/5 * (LambdaD - LambdaDprime)*(LambdaD - a*a)*(LambdaD - b*b)*(LambdaD - c*c),
-			 8*M_PI/5 * (LambdaD - LambdaDprime)*(LambdaDprime - a*a)*(LambdaDprime - b*b)*(LambdaDprime - c*c),
-			 4*M_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
-			 4*M_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
-			 4*M_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
+  double analytic[9] = { 4*PETSC_PI,
+			 4*PETSC_PI/3 * hy*hy*hz*hz,
+			 4*PETSC_PI/3 * hx*hx*hz*hz,
+			 4*PETSC_PI/3 * hx*hx*hy*hy,
+			 -8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaD - a*a)*(LambdaD - b*b)*(LambdaD - c*c),
+			 8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaDprime - a*a)*(LambdaDprime - b*b)*(LambdaDprime - c*c),
+			 4*PETSC_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
+			 4*PETSC_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
+			 4*PETSC_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
   double value, estimate, error;
   int counter = 0;
   for(int n=0; n<3; ++n) {

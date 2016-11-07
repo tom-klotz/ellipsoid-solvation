@@ -49,7 +49,7 @@ double calcGnp(EllipsoidalSystem *e, Point *positions, double *charges, int nCha
     sum += charges[k] * Enp;
   }
 
-  sum *= (4*M_PI)/((2.0*n+1.0)*normConstant);
+  sum *= (4*PETSC_PI)/((2.0*n+1.0)*normConstant);
 
   return sum;
 }

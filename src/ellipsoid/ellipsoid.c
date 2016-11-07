@@ -420,11 +420,11 @@ void cartesianToEllipsoidal2(struct EllipsoidalSystem *e, struct Point *p) {
     int Ayes = 0;
 
     for(int k=0; k<3; ++k) {
-      Aroot1 = cbrt(r)*cos((Atheta + 2.0*k*M_PI)/3.0);
-      Aroot2 = cbrt(r)*sin((Atheta + 2.0*k*M_PI)/3.0);
+      Aroot1 = cbrt(r)*cos((Atheta + 2.0*k*PETSC_PI)/3.0);
+      Aroot2 = cbrt(r)*sin((Atheta + 2.0*k*PETSC_PI)/3.0);
       //what is this jibber jabber
-      //Broot1 = cbrt(r)*cos((Btheta + 2.0*k*M_PI)/3.0);
-      //Broot2 = cbrt(r)*sin((Btheta + 2.0*k*M_PI)/3.0);
+      //Broot1 = cbrt(r)*cos((Btheta + 2.0*k*PETSC_PI)/3.0);
+      //Broot2 = cbrt(r)*sin((Btheta + 2.0*k*PETSC_PI)/3.0);
       if(Aroot1 >= 0 && Aroot2 >= 0) {
 	ArootReal = Aroot1;
 	ArootImag = Aroot2;
@@ -496,8 +496,8 @@ void cartesianToEllipsoidal(struct EllipsoidalSystem *s, struct Point *p)
       #        = cbrt(216)/(12) (cbrt(cth - i sth) + cbrt(cth + i sth))      
     */
     double lambda[3] = { cos(th/3.0),
-			 cos((th+4.0*M_PI)/3.0),
-			 cos((th+2.0*M_PI)/3.0) };
+			 cos((th+4.0*PETSC_PI)/3.0),
+			 cos((th+2.0*PETSC_PI)/3.0) };
     
     double val3 = 2*sqrt(Q)*lambda[2] - a1/3.0;
     if(val3 < 0 && fabs(val3) < 1e-10)
@@ -571,8 +571,8 @@ PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem *e, Vec xyzP, Vec ell
     cth = R/sqrt(Q*Q*Q);
     th = acos(cth);
     PetscReal lam[3] = { cos(th/3.0),
-			    cos((th+4.0*M_PI)/3.0),
-			    cos((th+2.0*M_PI)/3.0) };
+			    cos((th+4.0*PETSC_PI)/3.0),
+			    cos((th+2.0*PETSC_PI)/3.0) };
     
     val3 = 2*sqrt(Q)*lam[2] - a1/3.0;
     if(val3 < 0 && fabs(val3) < 1e-10)
@@ -1508,9 +1508,9 @@ PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *nor
     printf("\n\nbad\n\n\n\n");
     printf("alpha*B: %16.16e\n", alpha*B);
     printf("beta*A: %16.16e\n", beta*A);
-    return 8 * (M_PI/2.0)*1e-14;
+    return 8 * (PETSC_PI/2.0)*1e-14;
   }
-  return 8 * (M_PI/2.0)*(alpha*B - beta*A);
+  return 8 * (PETSC_PI/2.0)*(alpha*B - beta*A);
   */
 }
 

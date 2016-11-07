@@ -778,13 +778,13 @@ void test3() {
   double pointsA = a-distIn;
   double pointsB = b-distIn;
   double pointsC = c-distIn;
-  double delU = (2*M_PI-.01)/npoints;
-  double delV = (M_PI-.01)/npoints;
+  double delU = (2*PETSC_PI-.01)/npoints;
+  double delV = (PETSC_PI-.01)/npoints;
   double u,v;
   for(int i=0; i<npoints; ++i) {
-    u = (-M_PI/2+.01) + i*delU;
+    u = (-PETSC_PI/2+.01) + i*delU;
     for(int j=0; j<npoints; ++j) {
-      v = (-M_PI+.01) + j*delV;
+      v = (-PETSC_PI+.01) + j*delV;
       points[i*npoints+j].x1 = pointsA*cos(u)*sin(v);
       points[i*npoints+j].x2 = pointsB*sin(u)*sin(v);
       points[i*npoints+j].x3 = pointsC*cos(v);
@@ -848,13 +848,13 @@ void test3sphere() {
   double pointsA = a-distIn;
   double pointsB = b-distIn;
   double pointsC = c-distIn;
-  double delU = (M_PI-.01)/npoints;
-  double delV = (2*M_PI-.01)/npoints;
+  double delU = (PETSC_PI-.01)/npoints;
+  double delV = (2*PETSC_PI-.01)/npoints;
   double u,v;
   for(int i=0; i<npoints; ++i) {
-    u = (-M_PI/2+.01) + i*delU;
+    u = (-PETSC_PI/2+.01) + i*delU;
     for(int j=0; j<npoints; ++j) {
-      v = (-M_PI+.01) + j*delV;
+      v = (-PETSC_PI+.01) + j*delV;
       points[i*npoints+j].x1 = pointsA*cos(u)*cos(v);
       points[i*npoints+j].x2 = pointsB*cos(u)*sin(v);
       points[i*npoints+j].x3 = pointsC*sin(u);
@@ -949,7 +949,7 @@ void test4sphere()
   double pointsA = a - distIn;
   double pointsB = b - distIn;
   double pointsC = 0.0;
-  double delV = (2*M_PI-.01)/nCharges;
+  double delV = (2*PETSC_PI-.01)/nCharges;
   double v;
   double pert;
   for(int k=0; k<nCharges; ++k) {
@@ -1062,7 +1062,7 @@ PetscErrorCode RunArg()
   const double q     = ELECTRON_CHARGE;
   const double Na    = AVOGADRO_NUMBER;
   const double JperC = 4.184; /* Jouled/Calorie */
-  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/M_PI; /* kcal ang/mol */
+  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/PETSC_PI; /* kcal ang/mol */
 
 
   FILE *fp = fopen("../../pointbem/src/ellData.txt", "r");
@@ -1167,7 +1167,7 @@ PetscErrorCode RunArgTester()
   const double q     = ELECTRON_CHARGE;
   const double Na    = AVOGADRO_NUMBER;
   const double JperC = 4.184; /* Jouled/Calorie */
-  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/M_PI; /* kcal ang/mol */
+  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/PETSC_PI; /* kcal ang/mol */
 
 
   FILE *fp = fopen("../../pointbem/src/ellData.txt", "r");
@@ -1626,11 +1626,11 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
 				i, solution[i]); CHKERRQ(ierr);
   }
 
-  char fname[20] = "sol%d.txt";
+  char fname[20] = "out/sol%d.txt";
   char fnameS[20];
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     sprintf(fnameS, fname, i);
-    printf("%s\n", fnameS);
+    ierr = WriteToFile(fnameS, 1, solution[i]);CHKERRQ(ierr);
   }
 
   ierr = VecCreateSeq(PETSC_COMM_SELF, nx, &xOut);CHKERRQ(ierr);
@@ -1649,9 +1649,9 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   ierr = VecAssemblyBegin(yOut);CHKERRQ(ierr); ierr = VecAssemblyEnd(yOut);CHKERRQ(ierr);
   ierr = VecAssemblyBegin(zOut);CHKERRQ(ierr); ierr = VecAssemblyEnd(zOut);CHKERRQ(ierr);
   
-  ierr = WriteToFile("xVals.txt", 1, xOut);CHKERRQ(ierr);
-  ierr = WriteToFile("yVals.txt", 1, yOut);CHKERRQ(ierr);
-  ierr = WriteToFile("zVals.txt", 1, zOut);CHKERRQ(ierr);
+  ierr = WriteToFile("out/xVals.txt", 1, xOut);CHKERRQ(ierr);
+  ierr = WriteToFile("out/yVals.txt", 1, yOut);CHKERRQ(ierr);
+  ierr = WriteToFile("out/zVals.txt", 1, zOut);CHKERRQ(ierr);
 
   
 

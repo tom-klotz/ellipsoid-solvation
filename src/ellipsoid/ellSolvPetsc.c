@@ -605,7 +605,7 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nSource, Vec s
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecRestoreArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
-      Gnp *= (4*M_PI)/((2.0*n+1.0)*normConstant);
+      Gnp *= (4*PETSC_PI)/((2.0*n+1.0)*normConstant);
       ierr = VecSetValues(*GnpVals, 1, &count, &Gnp, INSERT_VALUES);CHKERRQ(ierr);
       count++;
     }
