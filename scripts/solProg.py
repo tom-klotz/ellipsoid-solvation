@@ -1,0 +1,40 @@
+from numpy import *
+from matplotlib.pyplot import *
+
+
+figure(1)
+
+X = loadtxt('out/xVals.txt')
+Y = loadtxt('out/yVals.txt')
+Z0 = loadtxt('out/sol0.txt')
+Z1 = loadtxt('out/sol1.txt')
+Z2 = loadtxt('out/sol2.txt')
+Z3 = loadtxt('out/sol3.txt')
+Z4 = loadtxt('out/sol4.txt')
+Z5 = loadtxt('out/sol5.txt')
+Z6 = loadtxt('out/sol6.txt')
+subplot(4, 2, 1)
+print(X.size)
+contour(X, Y, Z0)
+title('plot 0')
+subplot(4, 2, 2)
+contour(X, Y, Z1)
+title('plot 1')
+subplot(4, 2, 3)
+contour(X, Y, Z2)
+title('plot 2')
+subplot(4, 2, 4)
+contour(X, Y, Z3)
+title('plot 3')
+subplot(4, 2, 5)
+contour(X, Y, Z4)
+title('plot 4')
+subplot(4, 2, 6)
+contour(X, Y, Z5)
+title('plot 5')
+subplot(4, 2, 7)
+contour(X, Y, Z6)
+title('plot 6')
+show()
+#print(A(1,:),A(2,:),
+

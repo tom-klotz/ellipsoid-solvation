@@ -1630,7 +1630,7 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   char fnameS[20];
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     sprintf(fnameS, fname, i);
-    ierr = WriteToFile(fnameS, 1, solution[i]);CHKERRQ(ierr);
+    ierr = WriteToFile(fnameS, ny, solution[i]);CHKERRQ(ierr);
   }
 
   ierr = VecCreateSeq(PETSC_COMM_SELF, nx, &xOut);CHKERRQ(ierr);
@@ -1802,17 +1802,16 @@ PetscErrorCode main( int argc, char **argv )
   //PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
   
   //PetscInt Nmax = 2;
-  PetscInt nSrc = 5;
-  PetscInt nx   = 60;
+  PetscInt nSrc = 10;
+  PetscInt nx   = 15;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
-  PetscInt ny   = 60;
+  PetscInt ny   = 15;
   PetscReal yl  = -4.45;
   PetscReal yr  = 4.45;
   PetscReal zConst = .1;
   PetscReal eps1 = 4.0;
   PetscReal eps2 = 4.0;
-
   
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
   //ierr = SolutionAnimation(); <---- total crap
