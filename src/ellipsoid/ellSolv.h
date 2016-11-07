@@ -19,7 +19,7 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, Petsc
 PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
 PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem*, Vec, PetscInt, PetscInt, Vec);
 PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem*, PetscReal, PetscReal, PetscInt, Vec, Vec, Vec);
-
+PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscInt nTar, Vec tarXYZ, PetscInt Nmax, Vec tarSol);
 
 
 double calcEnp(EllipsoidalSystem*, Point*, int, int);
