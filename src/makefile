@@ -1,6 +1,6 @@
 CLINKER=gcc
 
-CFLAGS   = -I../include -I.
+CFLAGS   = -I../include -I. -std=c99
 SPH_LIBS = -lm -lgmp -lmpfr -llapack -lblas -L../lib -lgsl -lgslcblas
 
 SPH_OBJS = sphere/sphere.o sphere/sphSolv.o

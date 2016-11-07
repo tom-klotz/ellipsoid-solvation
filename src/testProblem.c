@@ -1815,10 +1815,10 @@ PetscErrorCode main( int argc, char **argv )
   
   //PetscInt Nmax = 2;
   PetscInt nSrc = 4;
-  PetscInt nx   = 60;
+  PetscInt nx   = 15;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
-  PetscInt ny   = 60;
+  PetscInt ny   = 20;
   PetscReal yl  = -4.45;
   PetscReal yr  = 4.45;
   PetscReal zConst = .1;
