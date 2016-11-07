@@ -1613,11 +1613,13 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   ierr = RandomEllipsoidPoints(a, b, -.1, sourceXYZ);CHKERRQ(ierr); // on z=0
   
   // populate source vec with points
+  /*
   for(PetscInt k=0; k<nSrc; ++k) {
     ierr = VecSetValue(sourceMag, k, 1.0, INSERT_VALUES);CHKERRQ(ierr);
   }
   ierr = VecAssemblyBegin(sourceMag);CHKERRQ(ierr); ierr = VecAssemblyEnd(sourceMag);CHKERRQ(ierr);
-
+  */
+  ierr = RandomMag(sourceMag); CHKERRQ(ierr);
   
   ierr = InitGrid(nx, xl, xr, ny, yl, yr, .1, &tarXYZ); //zConst = 0
 
@@ -1661,6 +1663,7 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
 
   /* output source xyz values */
   ierr = WriteToFile("out/chargeXYZ.txt", 3, sourceXYZ);CHKERRQ(ierr);
+  ierr = WriteToFile("out/chargeMag.txt", 1, sourceMag);CHKERRQ(ierr);
   FILE *fp = fopen("out/otherinfo.txt", "w");
   fprintf(fp, "%6.6f %6.6f %6.6f\n", a, b, c);
   fclose(fp);
@@ -1811,11 +1814,11 @@ PetscErrorCode main( int argc, char **argv )
   //PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
   
   //PetscInt Nmax = 2;
-  PetscInt nSrc = 2;
-  PetscInt nx   = 15;
+  PetscInt nSrc = 4;
+  PetscInt nx   = 60;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
-  PetscInt ny   = 15;
+  PetscInt ny   = 60;
   PetscReal yl  = -4.45;
   PetscReal yr  = 4.45;
   PetscReal zConst = .1;
