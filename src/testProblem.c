@@ -1357,19 +1357,21 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
   PetscFunctionBegin;
 
   /* petsc random object */
-  PetscRandom rnd;
-  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd);CHKERRQ(ierr);
-  ierr = PetscRandomSetInterval(rnd, 0, 1.0);CHKERRQ(ierr);
-  ierr = PetscRandomSetFromOptions(rnd);CHKERRQ(ierr);
+  PetscRandom rnd1, rnd2;
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd1);CHKERRQ(ierr);
+  ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd2);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd1, .1, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd2, .5, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetFromOptions(rnd1);CHKERRQ(ierr);
 
   ierr = VecGetSize(xyz, &nvals);CHKERRQ(ierr);
   nvals = nvals/3;
-  
+
   ierr = VecGetArray(xyz, &xyzArray);CHKERRQ(ierr);
   for(PetscInt i=0; i<nvals; ++i) {
-    ierr = PetscRandomGetValue(rnd, &r);CHKERRQ(ierr);
-    ierr = PetscRandomGetValue(rnd, &theta);CHKERRQ(ierr);
-    ierr = PetscRandomGetValue(rnd, &phi);CHKERRQ(ierr);
+    ierr = PetscRandomGetValue(rnd2, &r);CHKERRQ(ierr);
+    ierr = PetscRandomGetValue(rnd1, &theta);CHKERRQ(ierr);
+    ierr = PetscRandomGetValue(rnd1, &phi);CHKERRQ(ierr);
 
     //r = r_min + (r_max-r_min)*i/(nvals-1);
     //theta = theta_min + (theta_max-theta_min)*i/(nvals-1);
@@ -1385,6 +1387,11 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
     xyzArray[3*i+0] = x;
     xyzArray[3*i+1] = y;
     xyzArray[3*i+2] = z;
+    if(nvals==1) {
+      xyzArray[3*i+0] = 0;
+      xyzArray[3*i+1] = 0;
+      xyzArray[3*i+2] = -.1;
+    }
   }
   ierr = VecRestoreArray(xyz, &xyzArray);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -1603,7 +1610,7 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   }
 
 
-  ierr = RandomEllipsoidPoints(a, b, 0, sourceXYZ);CHKERRQ(ierr); // on z=0
+  ierr = RandomEllipsoidPoints(a, b, -.1, sourceXYZ);CHKERRQ(ierr); // on z=0
   
   // populate source vec with points
   for(PetscInt k=0; k<nSrc; ++k) {
@@ -1612,10 +1619,9 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   ierr = VecAssemblyBegin(sourceMag);CHKERRQ(ierr); ierr = VecAssemblyEnd(sourceMag);CHKERRQ(ierr);
 
   
-  ierr = InitGrid(nx, xl, xr, ny, yl, yr, zConst, &tarXYZ);
+  ierr = InitGrid(nx, xl, xr, ny, yl, yr, .1, &tarXYZ); //zConst = 0
 
 
-  
   // calculate the solvation potential
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     printf("wow\n");
@@ -1653,8 +1659,11 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   ierr = WriteToFile("out/yVals.txt", 1, yOut);CHKERRQ(ierr);
   ierr = WriteToFile("out/zVals.txt", 1, zOut);CHKERRQ(ierr);
 
-  
-
+  /* output source xyz values */
+  ierr = WriteToFile("out/chargeXYZ.txt", 3, sourceXYZ);CHKERRQ(ierr);
+  FILE *fp = fopen("out/otherinfo.txt", "w");
+  fprintf(fp, "%6.6f %6.6f %6.6f\n", a, b, c);
+  fclose(fp);
   
 
 
@@ -1802,7 +1811,7 @@ PetscErrorCode main( int argc, char **argv )
   //PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
   
   //PetscInt Nmax = 2;
-  PetscInt nSrc = 10;
+  PetscInt nSrc = 2;
   PetscInt nx   = 15;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
