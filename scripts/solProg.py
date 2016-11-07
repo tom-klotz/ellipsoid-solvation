@@ -1,8 +1,9 @@
 from numpy import *
-from matplotlib.pyplot import *
+from time import *
+import numpy.random as rnd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Ellipse
 
-
-figure(1)
 
 X = loadtxt('out/xVals.txt')
 Y = loadtxt('out/yVals.txt')
@@ -13,33 +14,100 @@ Z3 = transpose(loadtxt('out/sol3.txt'))
 Z4 = transpose(loadtxt('out/sol4.txt'))
 Z5 = transpose(loadtxt('out/sol5.txt'))
 Z6 = transpose(loadtxt('out/sol6.txt'))
+Z7 = transpose(loadtxt('out/sol7.txt'))
 abc = loadtxt('out/otherinfo.txt')
 chg = loadtxt('out/chargeXYZ.txt')
 col = loadtxt('out/chargeMag.txt')
-area = 50
+print(abc)
 print(chg)
-subplot(4, 2, 1)
-contour(X, Y, Z0)
-scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
-title('plot 0')
-subplot(4, 2, 2)
-contour(X, Y, Z1)
-title('plot 1')
-subplot(4, 2, 3)
-contour(X, Y, Z2)
-title('plot 2')
-subplot(4, 2, 4)
-contour(X, Y, Z3)
-title('plot 3')
-subplot(4, 2, 5)
-contour(X, Y, Z4)
-title('plot 4')
-subplot(4, 2, 6)
-contour(X, Y, Z5)
-title('plot 5')
-subplot(4, 2, 7)
-contour(X, Y, Z6)
-title('plot 6')
-show()
-#print(A(1,:),A(2,:),
+ells = [Ellipse(xy=[0,0], width=2*abc[0], height=2*abc[1], angle=0) for i in range(8)]
+area = 50
 
+fig = plt.figure(0)
+
+ellAlpha = .3
+levs = [-1, -.5, -.25, -.2, -.15, -.1, -.075, -.05, -.025, 0, .025, .05, .075, .1, .15, .2, .25, .5, 1]
+
+
+ax = fig.add_subplot(421, aspect='equal')
+ax.add_artist(ells[0])
+ells[0].set_clip_box(ax.bbox)
+ells[0].set_alpha(ellAlpha)
+ells[0].set_facecolor(rnd.rand(3))
+ax.contour(X, Y, Z0, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.set_title('plot 0')
+
+
+ax = fig.add_subplot(422, aspect='equal')
+ax.contour(X, Y, Z1, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[1])
+ells[1].set_clip_box(ax.bbox)
+ells[1].set_alpha(ellAlpha)
+ells[1].set_facecolor(rnd.rand(3))
+ax.set_title('plot 1')
+
+
+ax = fig.add_subplot(423, aspect='equal')
+ax.contour(X, Y, Z2, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[2])
+ells[2].set_clip_box(ax.bbox)
+ells[2].set_alpha(ellAlpha)
+ells[2].set_facecolor(rnd.rand(3))
+ax.set_title('plot 2')
+
+
+ax = fig.add_subplot(424, aspect='equal')
+ax.contour(X, Y, Z3, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[3])
+ells[3].set_alpha(ellAlpha)
+ells[3].set_facecolor(rnd.rand(3))
+ax.set_title('plot 3')
+
+
+ax = fig.add_subplot(425, aspect='equal')
+ax.contour(X, Y, Z4, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[4])
+ells[4].set_alpha(ellAlpha)
+ells[4].set_facecolor(rnd.rand(3))
+ax.set_title('plot 4')
+
+
+ax = fig.add_subplot(426, aspect='equal')
+ax.contour(X, Y, Z5, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[5])
+ells[5].set_alpha(ellAlpha)
+ells[5].set_facecolor(rnd.rand(3))
+ax.set_title('plot 5')
+
+
+ax = fig.add_subplot(427, aspect='equal')
+ax.contour(X, Y, Z6, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[6])
+ells[6].set_alpha(ellAlpha)
+ells[6].set_facecolor(rnd.rand(3))
+ax.set_title('plot 6')
+
+ax = fig.add_subplot(428, aspect='equal')
+ax.contour(X, Y, Z7, levels=levs)
+#scatter(chg[:,0],chg[:,1], s=area, c=col, alpha=0.5)
+ax.scatter(chg[0],chg[1], s=area, c=col, alpha=0.5)
+ax.add_artist(ells[7])
+ells[6].set_alpha(ellAlpha)
+ells[6].set_facecolor(rnd.rand(3))
+ax.set_title('plot 7')
+
+plt.show()

@@ -1390,7 +1390,7 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
     if(nvals==1) {
       xyzArray[3*i+0] = 0;
       xyzArray[3*i+1] = 0;
-      xyzArray[3*i+2] = -.1;
+      xyzArray[3*i+2] = .1;
     }
   }
   ierr = VecRestoreArray(xyz, &xyzArray);CHKERRQ(ierr);
@@ -1586,7 +1586,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
 #define __FUNCT__ "GridAnimation"
 PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
 {
-  const PetscInt NUM_SOLUTIONS = 7;
+  const PetscInt NUM_SOLUTIONS = 8;
   PetscErrorCode ierr;
   Vec sourceXYZ, sourceMag, tarXYZ;
   Vec solution[NUM_SOLUTIONS];
@@ -1621,7 +1621,7 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   */
   ierr = RandomMag(sourceMag); CHKERRQ(ierr);
   
-  ierr = InitGrid(nx, xl, xr, ny, yl, yr, .1, &tarXYZ); //zConst = 0
+  ierr = InitGrid(nx, xl, xr, ny, yl, yr, 0, &tarXYZ); //zConst = 0
 
 
   // calculate the solvation potential
@@ -1814,16 +1814,16 @@ PetscErrorCode main( int argc, char **argv )
   //PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
   
   //PetscInt Nmax = 2;
-  PetscInt nSrc = 4;
+  PetscInt nSrc = 1;
   PetscInt nx   = 15;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
-  PetscInt ny   = 20;
+  PetscInt ny   = 15;
   PetscReal yl  = -4.45;
   PetscReal yr  = 4.45;
   PetscReal zConst = .1;
   PetscReal eps1 = 4.0;
-  PetscReal eps2 = 4.0;
+  PetscReal eps2 = 80.0;
   
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
   //ierr = SolutionAnimation(); <---- total crap
