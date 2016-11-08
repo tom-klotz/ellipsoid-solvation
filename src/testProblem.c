@@ -1625,7 +1625,7 @@ PetscErrorCode GridAnimation()
 
   PetscReal eps1 = 4.0;
   PetscReal eps2 = 4.0;
-  PetscInt nSrc  = 20;
+  PetscInt nSrc  = 10;
   PetscInt nx    = 20;
   PetscReal xl   = -4.8;
   PetscReal xr   = 4.8;
