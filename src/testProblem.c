@@ -11,6 +11,7 @@
 #include "sphere/sphSolv.h"
 #include <gsl/gsl_rng.h>
 #include "constants.h"
+#include "testProblem.h"
 
 
 void runTest1() {
@@ -1427,15 +1428,24 @@ PetscErrorCode RandomMag(Vec mags)
 
 #undef __FUNCT__
 #define __FUNCT__ "WorkPrecExample"
-PetscErrorCode WorkPrecExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
+PetscErrorCode WorkPrecExample(PetscInt Nmax)
 {
   PetscErrorCode ierr;
-  Vec srcXYZ, srcMag, solution;
-  PetscReal xh, yh;
-  PetscReal xc, yc;
-  PetscReal xyz[3];
-  PetscReal randVal;
-  PetscInt ind;
+  
+  const PetscInt NUM_SOLUTIONS = 10;
+  const PetscInt CHARGE_START = 100000;
+  const PetscInt CHARGE_INC   = 50000;
+  Vec srcXYZ[NUM_SOLUTIONS], srcMag[NUM_SOLUTIONS], solution[NUM_SOLUTIONS];
+  PetscInt i;
+  PetscInt chargeNums[NUM_SOLUTIONS];
+  PetscLogEvent events[NUM_SOLUTIONS];
+  PetscInt charges;
+
+  char tText[30] = "Free energy with %d charges";
+  char eText[30];
+  PetscInt tempNum;
+
+  EllipsoidalSystem e;
   PetscFunctionBegin;
 
   const PetscReal eps1 = 4.0;
@@ -1444,18 +1454,34 @@ PetscErrorCode WorkPrecExample(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscR
   const PetscReal a = 3.0;
   const PetscReal b = 2.0;
   const PetscReal c = 1.0;
+
+  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
   
-  // initialize XYZ and solution vectors
-  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nSrc, &srcXYZ);CHKERRQ(ierr);
-  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc  , &srcMag);CHKERRQ(ierr);
-  ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc, &solution);CHKERRQ(ierr);
+  /* create the vector with charge numbers to use */
+  for(i=0; i < NUM_SOLUTIONS; ++i) {
+    charges = CHARGE_START + CHARGE_INC*i;
+    chargeNums[i] = charges;
+    /* initialize xyz and solution vectors */
+    ierr = VecCreateSeq(PETSC_COMM_SELF, 3*charges, srcXYZ+i);CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, charges, srcMag+i);CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, charges, solution+i);CHKERRQ(ierr);
+    /* generate random points and magnitudes */
+    ierr = RandomEllipsoidPoints(a, b, c, srcXYZ[i]);CHKERRQ(ierr);
+    ierr = RandomMag(srcMag[i]);CHKERRQ(ierr);
 
-  /* generate random points inside of ellipsoid */
-  ierr = RandomEllipsoidPoints(a, b, 0, srcXYZ);CHKERRQ(ierr); //c=0
-  ierr = RandomMag(srcMag);CHKERRQ(ierr);
-  ierr = VecView(srcMag, PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    /* register events for flop counting */
+    sprintf(eText, tText, charges);
+    ierr = PetscLogEventRegister((const char*) eText, 0, events+i);CHKERRQ(ierr);
+  }
+  
 
-  //ierr = CalcEllipsoidFreeEnergy(a, b, c, eps1, eps2, nSrc, srcXYZ, srcMag, 1e-5, 4, solution);
+  printf("wow we here\n");
+  for(i=0; i < NUM_SOLUTIONS; ++i) {
+    printf("calculating olution %d/%d\n", i+1, NUM_SOLUTIONS);
+    ierr = PetscLogEventBegin(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
+    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, chargeNums[i], srcXYZ[i], srcMag[i], 1e-5, Nmax, solution[i]);
+    ierr = PetscLogEventEnd(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
+  }
   //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
@@ -1584,7 +1610,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
 
 #undef __FUNCT__
 #define __FUNCT__ "GridAnimation"
-PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
+PetscErrorCode GridAnimation()
 {
   const PetscInt NUM_SOLUTIONS = 8;
   PetscErrorCode ierr;
@@ -1596,6 +1622,18 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   PetscReal randVal;
   PetscInt ind;
   PetscFunctionBegin;
+
+  PetscReal eps1 = 4.0;
+  PetscReal eps2 = 4.0;
+  PetscInt nSrc  = 20;
+  PetscInt nx    = 20;
+  PetscReal xl   = -4.8;
+  PetscReal xr   = 4.8;
+  PetscInt ny    = 20;
+  PetscReal yl   = -4.2;
+  PetscReal yr   =  4.2;
+  PetscReal zConst = .1;
+  
   
   const PetscReal a = 3.0;
   const PetscReal b = 2.0;
@@ -1638,7 +1676,7 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   char fnameS[20];
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     sprintf(fnameS, fname, i);
-    ierr = WriteToFile(fnameS, ny, solution[i]);CHKERRQ(ierr);
+    ierr = WriteToFile((const char*) fnameS, ny, solution[i]);CHKERRQ(ierr);
   }
 
   ierr = VecCreateSeq(PETSC_COMM_SELF, nx, &xOut);CHKERRQ(ierr);
@@ -1657,13 +1695,13 @@ PetscErrorCode GridAnimation(PetscReal eps1, PetscReal eps2, PetscInt nSrc, Pets
   ierr = VecAssemblyBegin(yOut);CHKERRQ(ierr); ierr = VecAssemblyEnd(yOut);CHKERRQ(ierr);
   ierr = VecAssemblyBegin(zOut);CHKERRQ(ierr); ierr = VecAssemblyEnd(zOut);CHKERRQ(ierr);
   
-  ierr = WriteToFile("out/xVals.txt", 1, xOut);CHKERRQ(ierr);
-  ierr = WriteToFile("out/yVals.txt", 1, yOut);CHKERRQ(ierr);
-  ierr = WriteToFile("out/zVals.txt", 1, zOut);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/xVals.txt", 1, xOut);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/yVals.txt", 1, yOut);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/zVals.txt", 1, zOut);CHKERRQ(ierr);
 
   /* output source xyz values */
-  ierr = WriteToFile("out/chargeXYZ.txt", 3, sourceXYZ);CHKERRQ(ierr);
-  ierr = WriteToFile("out/chargeMag.txt", 1, sourceMag);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/chargeXYZ.txt", 3, sourceXYZ);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/chargeMag.txt", 1, sourceMag);CHKERRQ(ierr);
   FILE *fp = fopen("out/otherinfo.txt", "w");
   fprintf(fp, "%6.6f %6.6f %6.6f\n", a, b, c);
   fclose(fp);
@@ -1737,7 +1775,7 @@ PetscErrorCode numChargesPlot(PetscInt nMin, PetscInt nMax, PetscInt nStep)
 
 #undef __FUNCT__
 #define __FUNCT__ "WriteToFile"
-PetscErrorCode WriteToFile(char *fname, PetscInt rowsize, Vec values)
+PetscErrorCode WriteToFile(const char *fname, PetscInt rowsize, Vec values)
 {
   PetscErrorCode ierr;
   PetscInt k;
@@ -1766,8 +1804,7 @@ PetscErrorCode SolutionAnimation()
   PetscErrorCode ierr;
   Vec x1, y1, s0, s1, s2, s3;
   PetscFunctionBegin;
-  PetscInt Nmax = 2;
-  PetscInt nSrc = 4;
+  PetscInt nSrc = 10;
   PetscInt nx   = 15;
   PetscReal xl  = -4.6;
   PetscReal xr  = 4.6;
@@ -1777,16 +1814,16 @@ PetscErrorCode SolutionAnimation()
   PetscReal zConst = .1;
 
   ierr = GridSolution(0, nSrc, nx, xl, xr, ny, yl, yr, zConst, &x1, &y1, &s0);CHKERRQ(ierr);
-  ierr = WriteToFile("out/sol0.txt", ny, s0);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/sol0.txt", ny, s0);CHKERRQ(ierr);
   ierr = GridSolution(1, nSrc, nx, xl, xr, ny, yl, yr, zConst, &x1, &y1, &s1);CHKERRQ(ierr);
-  ierr = WriteToFile("out/sol1.txt", ny, s1);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/sol1.txt", ny, s1);CHKERRQ(ierr);
   ierr = GridSolution(2, nSrc, nx, xl, xr, ny, yl, yr, zConst, &x1, &y1, &s2);CHKERRQ(ierr);
-  ierr = WriteToFile("out/sol2.txt", ny, s2);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/sol2.txt", ny, s2);CHKERRQ(ierr);
   ierr = GridSolution(3, nSrc, nx, xl, xr, ny, yl, yr, zConst, &x1, &y1, &s3);CHKERRQ(ierr);
-  ierr = WriteToFile("out/sol3.txt", ny, s3);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/sol3.txt", ny, s3);CHKERRQ(ierr);
 
-  ierr = WriteToFile("out/xVals.txt", 1, x1);CHKERRQ(ierr);
-  ierr = WriteToFile("out/yVals.txt", 1, y1);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/xVals.txt", 1, x1);CHKERRQ(ierr);
+  ierr = WriteToFile((const char*) "out/yVals.txt", 1, y1);CHKERRQ(ierr);
 
   PetscFunctionReturn(0);
 }
@@ -1813,8 +1850,8 @@ PetscErrorCode main( int argc, char **argv )
   //ierr = RunArgTester(); CHKERRQ(ierr);
   //PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal xl, PetscReal xr, PetscInt ny, PetscReal yl, PetscReal yr, PetscReal zConst)
   
-  //PetscInt Nmax = 2;
-  PetscInt nSrc = 1;
+  PetscInt Nmax = 4;
+  PetscInt nSrc = 25;
   PetscInt nx   = 15;
   PetscReal xl  = -5.23;
   PetscReal xr  = 5.23;
@@ -1826,9 +1863,9 @@ PetscErrorCode main( int argc, char **argv )
   PetscReal eps2 = 80.0;
   
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
-  //ierr = SolutionAnimation(); <---- total crap
-  ierr = GridAnimation(eps1, eps2, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
-  //ierr = WorkPrecExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+  //ierr = SolutionAnimation(); //<---- total crap
+  ierr = GridAnimation();CHKERRQ(ierr);
+  //ierr = WorkPrecExample(Nmax);
 
   //ierr = numChargesPlot(100, 500, 100);
   ierr = PetscFinalize();CHKERRQ(ierr);

@@ -43,10 +43,11 @@ PetscErrorCode HowMany(PetscInt N, PetscInt *num)
 
 #undef __FUNCT__
 #define __FUNCT__ "CalcEllipsoidFreeEnergy"
-PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol)
+PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol)
 {
   PetscErrorCode ierr;
-  EllipsoidalSystem e;
+  PetscInt flopCount;
+  //EllipsoidalSystem e;
   PetscReal x, y, z;
   PetscInt n, p, npsize;
   Vec srcEll, tarEll;
@@ -57,10 +58,11 @@ PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, Pe
   const PetscScalar *EnpValsArray, *FnpValsArray;
   PetscScalar *tarSolArray;
   PetscFunctionBegin;
+  flopCount = 0;
   
   /* init ellipsoidal system */
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
-
+  //ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  
   /* initialize expansion vectors */
   ierr = HowMany(Nmax, &npsize);CHKERRQ(ierr);
   //ierr = VecCreateSeq(PETSC_COMM_SELF, npsize, &coulCoefs);CHKERRQ(ierr);
@@ -72,13 +74,13 @@ PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, Pe
   ierr = VecDuplicate(srcEll, &tarEll);CHKERRQ(ierr);
   
   /* convert points from cartesian to ellipsoidal */
-  ierr = CartesianToEllipsoidalVec(&e, srcXYZ, srcEll);CHKERRQ(ierr);
+  ierr = CartesianToEllipsoidalVec(e, srcXYZ, srcEll);CHKERRQ(ierr);
   ierr = VecCopy(srcEll, tarEll);CHKERRQ(ierr); //source+target same
 
   /* Calculate Gnp */
-  ierr = CalcCoulombEllCoefs(&e, nSrc, srcEll, srcMag, Nmax, &coulCoefs);CHKERRQ(ierr);
+  ierr = CalcCoulombEllCoefs(e, nSrc, srcEll, srcMag, Nmax, &coulCoefs);CHKERRQ(ierr);
   /* calculate Bnp and Cnp */
-  ierr = CalcReactAndExtCoefsFromCoulomb(&e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
+  ierr = CalcReactAndExtCoefsFromCoulomb(e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
 
   // create EnpVals and FnpVals vectors
   ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc, &EnpVals);CHKERRQ(ierr);
@@ -98,25 +100,25 @@ PetscErrorCode CalcEllipsoidFreeEnergy(PetscReal a, PetscReal b, PetscReal c, Pe
       PetscReal Cnp =   extCoefsArray[ind];
       PetscReal Bnp = reactCoefsArray[ind];
       
-      ierr = CalcSolidInteriorHarmonicVec(&e, tarEll, n, p, EnpVals);CHKERRQ(ierr);
-      ierr = CalcSolidExteriorHarmonicVec(&e, tarEll, n, p, FnpVals);CHKERRQ(ierr);
+      ierr = CalcSolidInteriorHarmonicVec(e, tarEll, n, p, EnpVals);CHKERRQ(ierr);
+      //ierr = CalcSolidExteriorHarmonicVec(&e, tarEll, n, p, FnpVals);CHKERRQ(ierr);
 
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
-      ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      //ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
       for(PetscInt k=0; k < nSrc; ++k) {
 	if(n==0 && p==0) tarSolArray[k] = 0;
 	PetscReal Enp = EnpValsArray[k];
-	PetscReal Fnp = FnpValsArray[k];
-	tarSolArray[k] += Bnp*Enp;
+	//PetscReal Fnp = FnpValsArray[k];
+	tarSolArray[k] += Bnp*Enp; flopCount += 2;
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
-      ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      //ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
 
       ind++;
     }
   }
-  
-  
+  ierr = VecRestoreArray(tarSol, &tarSolArray);CHKERRQ(ierr);
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -187,9 +189,16 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
       ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
       for(PetscInt k=0; k < nTar; ++k) {
 	if(n==0 && p==0) tarSolArray[k] = 0;
-	PetscReal Enp = EnpValsArray[k];
+	PetscReal lambda;
+	PetscInt index = 3*k+0;
+	ierr = VecGetValues(tarEll, 1, &index, &lambda);CHKERRQ(ierr);
+
+	  PetscReal Enp = EnpValsArray[k];
 	PetscReal Fnp = FnpValsArray[k];
-	tarSolArray[k] += Bnp*Enp;
+	if(PetscAbsReal(lambda) <= a)
+	  tarSolArray[k] += Bnp*Enp;
+	else
+	  tarSolArray[k] += Cnp*Fnp;
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
