@@ -1212,7 +1212,7 @@ PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
   mpfr_d_div(*temp, 1.0, *x, MPFR_RNDN);
   double s = mpfr_get_d(*temp, MPFR_RNDZ);
   double E;
-  calcLame((*ctx).e, (*ctx).n, (*ctx).p, s, ctx->signm, ctx->signn, &E);
+  ierr = calcLame((*ctx).e, (*ctx).n, (*ctx).p, s, ctx->signm, ctx->signn, &E);CHKERRQ(ierr);
   mpfr_mul(*temp, *x, *x, MPFR_RNDN);
   mpfr_set(*val, *temp, MPFR_RNDN);
   mpfr_mul_d(*temp, *temp, (*ctx).e->k2, MPFR_RNDN);
@@ -1267,7 +1267,7 @@ PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, in
   mpfr_t *b = &(e->tempb);
   mpfr_set_d(*a, 0.0, MPFR_RNDN);
   mpfr_set_d(*b, 1.0, MPFR_RNDN);
-  mpfr_div_d(*b, *b, l, MPFR_RNDN);
+  mpfr_div_d(*b, *b, l, MPFR_RNDN); logFlops++;
   //printf("a: %15.15f\nb: %15.15f\n", mpfr_get_d(*a, MPFR_RNDN), mpfr_get_d(*b, MPFR_RNDN));
   int err = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*))integrand, e, *a, *b, 14, sol, &ctx);
   if(err)
@@ -1607,7 +1607,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
 
 
   //DELETE LATER
-  int maxL = 5;
+  int maxL = 7;
   double *SUMS = (double*) malloc(sizeof(double)*maxL);
   int *insideSums = (int*) malloc(sizeof(int)*maxL);
 

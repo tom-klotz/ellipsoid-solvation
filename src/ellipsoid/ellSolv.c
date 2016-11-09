@@ -44,8 +44,6 @@ double calcGnp(EllipsoidalSystem *e, Point *positions, double *charges, int nCha
 
     Enp = calcEnp(e, positions+k, n, p);
 
-
-
     sum += charges[k] * Enp;
   }
 
@@ -150,11 +148,13 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
     solution[i] = 0;
   int count = 0;
   double *fnpvals = (double*) malloc(sizeof(double)*nPoints);
+
   for(int n=0; n<=maxDeg; ++n) {
+
     for(int p=0; p < 2*n+1; ++p) {
       Gnp = calcGnp(problem->e, problem->positions, problem->charges, problem->nCharges, n, p);
       calcBnpAndCnpFromGnp(problem, n, p, Gnp, &Bnp, &Cnp);
-     
+
       for(int k=0; k<nPoints; ++k) {
 	//if on exterior
 	if(fabs(r[k].x1) >= e->a) {
@@ -164,6 +164,13 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
 	else {
 	  Enp = calcEnp(problem->e, r+k, n, p);
 	  solution[k] += Bnp*Enp;
+	  if(n==3 && p==2) {
+	    printf("do we get here2\n");
+	    printf("(%d,%d)\n", n, p);
+	    printf("Enp: %15.15f\n", Enp);
+	    printf("Bnp: %15.15f\n", Bnp);
+	    printf("\n");
+	  }
 	}
       }
 
@@ -171,11 +178,12 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
 
       count++;
     }
-    printf("n: %d\n", n);
-    printf("Gnp: %16.16f\n", Gnp);
-    printf("Fnp: %16.16f\n", Fnp);
-    printf("enp: %16.16f\n", Enp);
-    printf("sum: %16.16f\n", solution[0]);
+    //printf("n: %d\n", n);
+    //printf("Gnp: %16.16f\n", Gnp);
+    //printf("Cnp: %16.16f\n", Cnp);
+    //printf("Fnp: %16.16f\n", Fnp);
+    //printf("enp: %16.16f\n", Enp);
+    //printf("sum: %16.16f\n", solution[0]);
     
   }
   //fclose(fp);

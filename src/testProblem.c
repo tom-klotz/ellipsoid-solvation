@@ -14,6 +14,128 @@
 #include "testProblem.h"
 
 
+void runTest1() {
+  
+  const int nCharges = 1;
+
+  EllipsoidalSystem e;
+  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
+
+  //grid dimensions
+  int nx = 10;
+  int ny = 10;
+  int nz = 2;
+  int nPoints = nx*ny*nz;
+  double xa = -5;
+  double xb = 5;
+  double ya = -5;
+  double yb = 5;
+  double za = -3;
+  double zb = 3;
+  double xh = (xb - xa)/(nx-1);
+  double yh = (yb - ya)/(ny-1);
+  double zh = (zb - za)/(nz-1);
+
+
+  double charges[nCharges];
+  for(int i=0; i<nCharges; ++i)
+    charges[i] = 1.0;
+
+  //source charges
+  SPoint sPoints[nCharges];
+  Point  ePoints[nCharges];
+  sPoints[0].x1 = 2.02;
+  sPoints[0].x2 = -0.4;
+  sPoints[0].x3 = -.463;
+  ePoints[0].x1 = sPoints[0].x1;
+  ePoints[0].x2 = sPoints[0].x2;
+  ePoints[0].x3 = sPoints[0].x3;
+
+  //permitivity constants
+  double e1 = 1.0;
+  double e2 = 1.0;
+
+  
+  printf("entering\n");
+  //solution vector
+  SPoint *rs = (SPoint*) malloc(sizeof(SPoint)*nPoints);
+  Point  *re = (Point*)  malloc(sizeof(Point) *nPoints);
+  SPoint *ro = (SPoint*) malloc(sizeof(SPoint)*nPoints);
+  double *exact = (double*) malloc(sizeof(double)*nPoints);
+  for(int i=0; i<nx; ++i) {
+    for(int j=0; j<ny; ++j) {
+      for(int k=0; k<nz; ++k) {
+	int index = k*ny*nx + j*nx + i;
+	rs[index].x1 = xa + i*xh;
+	rs[index].x2 = ya + j*yh;
+	rs[index].x3 = za + k*zh;
+	printf("rs[3] = %15.15f\n", rs[index].x3);
+	re[index].x1 = rs[index].x1;
+	re[index].x2 = rs[index].x2;
+	re[index].x3 = rs[index].x3;
+	ro[index].x1 = re[index].x1;
+	ro[index].x2 = re[index].x2;
+	ro[index].x3 = re[index].x3;
+
+	exact[index] = 0.0;
+	for(int num=0; num<nCharges; ++num)
+	  exact[index] += charges[num]/(e1*sqrt((sPoints[num].x1 - ro[index].x1)*(sPoints[num].x1 - ro[index].x1) +
+					    (sPoints[num].x2 - ro[index].x2)*(sPoints[num].x2 - ro[index].x2) +
+					     (sPoints[num].x3 - ro[index].x3)*(sPoints[num].x3 - ro[index].x3)));
+      }
+    }
+  }
+  printf("exiting\n");
+
+  //convert to spherical/ellipsoidal coordinates
+  for(int i=0; i<nCharges; ++i) {
+    cartesianToSpherical(sPoints+i);
+    cartesianToEllipsoidal(&e, ePoints+i);
+  }
+
+  //convert to spherical/ellipsoidal coordinates
+  for(int i=0; i<nPoints; ++i) {
+    cartesianToSpherical(rs + i);
+    cartesianToEllipsoidal(&e, re + i);
+  }
+
+
+  //set up problem
+  SProblem sProblem = {.positions = sPoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .b = 3.0};
+  Problem  eProblem = {.positions = ePoints, .charges = charges, .nCharges = nCharges, .e1 = e1, .e2 = e2, .e = &e};
+  
+ 
+  double *ssolution = (double*) malloc(sizeof(double)*nPoints);
+  double *esolution = (double*) malloc(sizeof(double)*nPoints);
+  calcCoulombSphericalGrid(&sProblem, 14, rs, nPoints, ssolution);
+  calcCoulombEllipsoidalGrid(&eProblem, 14, re, nPoints, esolution);
+
+  //add coulomb inside for plotting. Add later to calculation
+  for(int i=0; i<nPoints; ++i) {
+    for(int k=0; k<nCharges; ++k) {
+  //if inside sphere
+  //
+      //if(
+    }
+  }
+
+  printf("exact[0] = %15.15f\n", exact[0]);
+  //compare errors
+  double *sError = (double*) malloc(sizeof(double)*nPoints);
+  double *eError = (double*) malloc(sizeof(double)*nPoints);
+  for(int i=0; i<nx; ++i) {
+    for(int j=0; j<ny; ++j) {
+      for(int k=0; k<nz; ++k) {
+	int index = k*ny*nx + j*nx + i;
+	sError[index] = fabs(ssolution[index] - exact[index]);
+	eError[index] = fabs(esolution[index] - exact[index]);
+	if(i==1)
+	  printf("%d - s: %4.4e e: %4.4e\n", i, sError[index], eError[index]);
+      }
+    }
+  }
+
+}
 
 
 
@@ -352,10 +474,67 @@ PetscErrorCode CoulombExact(PetscReal eps1, Vec srcXYZ, Vec srcMag, Vec tarXYZ, 
       dx2 = (tarX-srcX)*(tarX-srcX);
       dy2 = (tarY-srcY)*(tarY-srcY);
       dz2 = (tarZ-srcZ)*(tarZ-srcZ);
-      
+
       val = mag/(eps1*PetscSqrtReal(dx2 + dy2 + dz2));
       solArray[i] += val;
     }
+  }
+  ierr = VecRestoreArrayRead(srcXYZ, &srcXYZArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(tarXYZ, &tarXYZArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
+  ierr = VecRestoreArray    (sol   , &solArray   );CHKERRQ(ierr);
+
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
+#define __FUNCT__ "CoulombExactZeroInside"
+PetscErrorCode CoulombExactZeroInside(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, Vec srcXYZ, Vec srcMag, Vec tarXYZ, Vec sol)
+{
+  PetscErrorCode ierr;
+  PetscReal srcX, srcY, srcZ;
+  PetscReal tarX, tarY, tarZ;
+  PetscReal dx2, dy2, dz2;
+  PetscReal val, mag;
+  const PetscScalar *srcXYZArray;
+  const PetscScalar *srcMagArray;
+  const PetscScalar *tarXYZArray;
+  PetscScalar *solArray;
+  PetscInt nSrc, nTar;
+  PetscInt i, k;
+  PetscFunctionBeginUser;
+
+  ierr = VecGetSize(srcMag, &nSrc);CHKERRQ(ierr);
+  ierr = VecGetSize(sol, &nTar);CHKERRQ(ierr);
+
+  ierr = VecZeroEntries(sol);CHKERRQ(ierr);
+  
+  ierr = VecGetArrayRead(srcXYZ, &srcXYZArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(tarXYZ, &tarXYZArray);CHKERRQ(ierr);
+  ierr = VecGetArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
+  ierr = VecGetArray    (sol   , &solArray   );CHKERRQ(ierr);
+  for(i=0; i<nTar; ++i) {
+    /* get target X,Y,Z */
+    tarX = tarXYZArray[3*i+0];
+    tarY = tarXYZArray[3*i+1];
+    tarZ = tarXYZArray[3*i+2];
+    for(k=0; k<nSrc; ++k) {
+      /* get source X,Y,Z */
+      srcX = srcXYZArray[3*k+0];
+      srcY = srcXYZArray[3*k+1];
+      srcZ = srcXYZArray[3*k+2];
+      mag  = srcMagArray[k];
+
+      dx2 = (tarX-srcX)*(tarX-srcX);
+      dy2 = (tarY-srcY)*(tarY-srcY);
+      dz2 = (tarZ-srcZ)*(tarZ-srcZ);
+
+      val = mag/(eps1*PetscSqrtReal(dx2 + dy2 + dz2));
+      solArray[i] += val;
+    }
+    if((tarX*tarX)/(a*a) + (tarY*tarY)/(b*b) + (tarZ*tarZ)/(c*c) <= 1)
+      solArray[i] = 0;
   }
   ierr = VecRestoreArrayRead(srcXYZ, &srcXYZArray);CHKERRQ(ierr);
   ierr = VecRestoreArrayRead(tarXYZ, &tarXYZArray);CHKERRQ(ierr);
@@ -414,9 +593,9 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
     xyzArray[3*i+1] = y;
     xyzArray[3*i+2] = z;
     if(nvals==1) {
-      xyzArray[3*i+0] = 0;
-      xyzArray[3*i+1] = 0;
-      xyzArray[3*i+2] = .1;
+      xyzArray[3*i+0] = 2.02;
+      xyzArray[3*i+1] = -0.4;
+      xyzArray[3*i+2] = -0.463;
     }
   }
   ierr = VecRestoreArray(xyz, &xyzArray);CHKERRQ(ierr);
@@ -458,8 +637,8 @@ PetscErrorCode WorkPrecExample(PetscInt Nmax)
   PetscErrorCode ierr;
   
   const PetscInt NUM_SOLUTIONS = 10;
-  const PetscInt CHARGE_START = 100000;
-  const PetscInt CHARGE_INC   = 50000;
+  const PetscInt CHARGE_START = 100;
+  const PetscInt CHARGE_INC   = 50;
   Vec srcXYZ[NUM_SOLUTIONS], srcMag[NUM_SOLUTIONS], solution[NUM_SOLUTIONS];
   PetscInt i;
   PetscInt chargeNums[NUM_SOLUTIONS];
@@ -474,7 +653,7 @@ PetscErrorCode WorkPrecExample(PetscInt Nmax)
   PetscFunctionBegin;
 
   const PetscReal eps1 = 4.0;
-  const PetscReal eps2 = 80.0;
+  const PetscReal eps2 = 4.0;
 
   const PetscReal a = 3.0;
   const PetscReal b = 2.0;
@@ -575,7 +754,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
   yh = (yr - yl) / (ny - 1);
 
 
-  ierr = RandomEllipsoidPoints(a, b, c, sourceXYZ);CHKERRQ(ierr);
+  ierr =RandomEllipsoidPoints(a, b, c, sourceXYZ);CHKERRQ(ierr);
 
   // populate source vec with points
   for(PetscInt k=0; k<nSrc; ++k) {
@@ -637,7 +816,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
 #define __FUNCT__ "GridAnimation"
 PetscErrorCode GridAnimation()
 {
-  const PetscInt NUM_SOLUTIONS = 8;
+  const PetscInt NUM_SOLUTIONS = 12;
   PetscErrorCode ierr;
   Vec sourceXYZ, sourceMag, tarXYZ;
   Vec solution[NUM_SOLUTIONS], solutionEx[NUM_SOLUTIONS], errorVec[NUM_SOLUTIONS];
@@ -648,16 +827,16 @@ PetscErrorCode GridAnimation()
   PetscInt ind;
   PetscFunctionBegin;
 
-  PetscReal eps1 = 4.0;
-  PetscReal eps2 = 4.0;
-  PetscInt nSrc  = 10;
+  PetscReal eps1 = 1.0;
+  PetscReal eps2 = 1.0;
+  PetscInt nSrc  = 1;
   PetscInt nx    = 10;
-  PetscReal xl   = -4.8;
-  PetscReal xr   = 4.8;
+  PetscReal xl   = -5;
+  PetscReal xr   = 5;
   PetscInt ny    = 10;
-  PetscReal yl   = -4.2;
-  PetscReal yr   =  4.2;
-  PetscReal zConst = .1;
+  PetscReal yl   = -5;
+  PetscReal yr   =  5;
+  PetscReal zConst = -3;
   
   
   const PetscReal a = 3.0;
@@ -669,46 +848,70 @@ PetscErrorCode GridAnimation()
   ierr = VecCreateSeq(PETSC_COMM_SELF, nSrc   , &sourceMag);CHKERRQ(ierr);
   // initialize solution vectors
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
-    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , &solution[i]); CHKERRQ(ierr);
-    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , &solutionEx[i]); CHKERRQ(ierr);
-    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , &errorVec[i]); CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , solution+i); CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , solutionEx+i); CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, nx*ny  , errorVec+i); CHKERRQ(ierr);
     
   }
 
 
-  ierr = RandomEllipsoidPoints(a, b, -.1, sourceXYZ);CHKERRQ(ierr); // on z=0
+  ierr = RandomEllipsoidPoints(a, b, c, sourceXYZ);CHKERRQ(ierr); // on z=0
   
   ierr = RandomMag(sourceMag); CHKERRQ(ierr);
   
-  ierr = InitGrid(nx, xl, xr, ny, yl, yr, 0, &tarXYZ); //zConst = 0
+  ierr = InitGrid(nx, xl, xr, ny, yl, yr, zConst, &tarXYZ);CHKERRQ(ierr); //zConst = 0
 
 
+  //Vec tester;
+  //ierr = VecDuplicate(tarXYZ, &tester);
   PetscReal err;
   // calculate the solvation potential
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     printf("wow\n");
-    ierr = CoulombExact(eps1, sourceXYZ, sourceMag, tarXYZ, solutionEx[i]);
+    ierr = CoulombExactZeroInside(a, b, c, eps1, sourceXYZ, sourceMag, tarXYZ, solutionEx[i]);
+    //ierr = VecCopy(tarXYZ, tester);
+    printf("eps: %15.15f\n", eps1);
     ierr = CalcEllipsoidTester( a , b , c,
 				eps1, eps2,
 				nSrc, sourceXYZ, sourceMag,
 				nx*ny, tarXYZ,
 				i, solution[i]); CHKERRQ(ierr);
+    PetscInt zero = 0;
+    PetscReal sol0, solEx0;
+    ierr = VecGetValues(solution[i], 1, &zero, &sol0);CHKERRQ(ierr);
+    ierr = VecGetValues(solutionEx[i], 1, &zero, &solEx0);CHKERRQ(ierr);
+    //ierr = VecAXPY(tester, -1.0, tarXYZ);CHKERRQ(ierr);
+    //ierr = VecView(solutionEx[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    //ierr = VecView(solution[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
     ierr = VecCopy(solutionEx[i], errorVec[i]);CHKERRQ(ierr);
     ierr = VecAXPY(errorVec[i], -1.0, solution[i]);
     ierr = VecNorm(errorVec[i], NORM_2, &err);
-    printf("\n\n");
+    printf("\n");
     printf("the error on %d is %15.15f\n", i, err);
+    printf("solutionEx[%d] = %15.15f\n", 0, solEx0);
+    printf("solution[%d]   = %15.15f\n", 0, sol0);
+    //printf("exact:\n");
     //ierr = VecView(solutionEx[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    //printf("approx:\n");
     //ierr = VecView(solution[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
-    ierr = VecView(errorVec[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
-    printf("\n\n");
+    //printf("error:\n");
+    //ierr = VecView(errorVec[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    //printf("\n\n");
   }
 
   char fname[20] = "out/sol%d.txt";
+  char fnameEx[20] = "out/solEx%d.txt";
+  char fnameErr[20] = "out/solErr%d.txt";
   char fnameS[20];
+  char fnameExS[20];
+  char fnameErrS[20];
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     sprintf(fnameS, fname, i);
+    sprintf(fnameExS, fnameEx, i);
+    sprintf(fnameErrS, fnameErr, i);
     ierr = WriteToFile((const char*) fnameS, ny, solution[i]);CHKERRQ(ierr);
+    ierr = WriteToFile((const char*) fnameExS, ny, solutionEx[i]);CHKERRQ(ierr);
+    ierr = WriteToFile((const char*) fnameErrS, ny, errorVec[i]);CHKERRQ(ierr);
   }
 
   ierr = VecCreateSeq(PETSC_COMM_SELF, nx, &xOut);CHKERRQ(ierr);
@@ -896,8 +1099,9 @@ PetscErrorCode main( int argc, char **argv )
   
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
   //ierr = SolutionAnimation(); //<---- total crap
-  ierr = GridAnimation();CHKERRQ(ierr);
+  //ierr = GridAnimation();CHKERRQ(ierr);
   //ierr = WorkPrecExample(Nmax);
+  runTest1();
 
   //ierr = numChargesPlot(100, 500, 100);
   ierr = PetscFinalize();CHKERRQ(ierr);

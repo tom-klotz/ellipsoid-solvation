@@ -202,7 +202,7 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
 	PetscReal Enp = EnpValsArray[k];
 	PetscReal Fnp = FnpValsArray[k];
 	if(PetscAbsReal(lambda) <= a)
-	  tarSolArray[k] += (Gnp/eps1)*Fnp;
+	  tarSolArray[k] += 0; //(Gnp/eps1)*Fnp;
 	else
 	  tarSolArray[k] += (Gnp/eps1)*Fnp;
 	
@@ -526,7 +526,7 @@ PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem *e, PetscReal lambda,
 
 
   ierr = CalcSolidInteriorHarmonic(e, lambda, mu, nu, n, p, &Enp);CHKERRQ(ierr);
-  calcI(e, n, p, lambda, signm, signn, &Inp);
+  ierr = calcI(e, n, p, lambda, signm, signn, &Inp);CHKERRQ(ierr);
 
   *val = (2*n + 1) * Enp * Inp;
 
@@ -563,7 +563,7 @@ PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem* e, Vec ellPoints,
     else signn = 1;
     
     ierr = CalcSolidInteriorHarmonic(e, lambda, mu, nu, n, p, &Enp);CHKERRQ(ierr);
-    calcI(e, n, p, lambda, signm, signn, &Inp);
+    ierr = calcI(e, n, p, lambda, signm, signn, &Inp);CHKERRQ(ierr);
     Fnp = (2*n + 1) * Enp * Inp;
     ierr = VecSetValues(values, 1, &k, &Fnp, INSERT_VALUES);CHKERRQ(ierr);
   }
@@ -608,18 +608,16 @@ PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem* e, PetscInt nSource, Vec s
   count = 0;
   for(PetscInt n=0; n<=Nmax; ++n) {
     for(PetscInt p=0; p<2*n+1; ++p) {
-      calcNormalization(e, n, p, &normConstant);
+      ierr = calcNormalization(e, n, p, &normConstant);CHKERRQ(ierr);
       
       ierr = CalcSolidInteriorHarmonicVec(e, srcPoints, n, p, EnpVals);
       
-      ierr = VecGetArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       Gnp = 0;
       for(PetscInt k=0; k<nSource; ++k) {
 	Gnp += srcChargesArray[k]*EnpValsArray[k];
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
-      ierr = VecRestoreArrayRead(srcPoints, &srcPointsArray);CHKERRQ(ierr);
       Gnp *= (4*PETSC_PI)/((2.0*n+1.0)*normConstant);
       ierr = VecSetValues(*GnpVals, 1, &count, &Gnp, INSERT_VALUES);CHKERRQ(ierr);
       count++;
