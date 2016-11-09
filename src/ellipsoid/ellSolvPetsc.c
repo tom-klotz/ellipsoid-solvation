@@ -160,6 +160,10 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
 
   /* Calculate Gnp */
   ierr = CalcCoulombEllCoefs(&e, nSrc, srcEll, srcMag, Nmax, &coulCoefs);CHKERRQ(ierr);
+  //printf("\n\n##################################\n########## COUL COEFS #############\n###########################################\n\n");
+  //printf("nmax: %d\n", Nmax);
+  //ierr = VecView(coulCoefs, PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+  //printf("\n\n##################################\n########## OVER #############\n###########################################\n\n");
   /* calculate Bnp and Cnp */
   ierr = CalcReactAndExtCoefsFromCoulomb(&e, eps1, eps2, Nmax, coulCoefs, reactCoefs, extCoefs);
 
@@ -188,17 +192,20 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
       for(PetscInt k=0; k < nTar; ++k) {
-	if(n==0 && p==0) tarSolArray[k] = 0;
+	if(n==0 && p==0) {
+	  tarSolArray[k] = 0;
+	}
 	PetscReal lambda;
 	PetscInt index = 3*k+0;
 	ierr = VecGetValues(tarEll, 1, &index, &lambda);CHKERRQ(ierr);
-
+	
 	PetscReal Enp = EnpValsArray[k];
 	PetscReal Fnp = FnpValsArray[k];
 	if(PetscAbsReal(lambda) <= a)
-	  tarSolArray[k] += Gnp*Fnp;
+	  tarSolArray[k] += (Gnp/eps1)*Fnp;
 	else
-	  tarSolArray[k] += Gnp*Fnp;
+	  tarSolArray[k] += (Gnp/eps1)*Fnp;
+	
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
@@ -206,7 +213,6 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
       ind++;
     }
   }
-  
   
   PetscFunctionReturn(0);
 }
