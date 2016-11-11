@@ -631,8 +631,8 @@ PetscErrorCode RandomMag(Vec mags)
 }
 
 #undef __FUNCT__
-#define __FUNCT__ "WorkPrecExample"
-PetscErrorCode WorkPrecExample(PetscInt Nmax)
+#define __FUNCT__ "ChargeFlopsExample"
+PetscErrorCode ChargeFlopsExample(PetscInt Nmax)
 {
   PetscErrorCode ierr;
   
@@ -680,13 +680,107 @@ PetscErrorCode WorkPrecExample(PetscInt Nmax)
   
 
   printf("wow we here\n");
+  PetscReal freeE;
   for(i=0; i < NUM_SOLUTIONS; ++i) {
-    printf("calculating olution %d/%d\n", i+1, NUM_SOLUTIONS);
+    printf("calculating solution %d/%d\n", i+1, NUM_SOLUTIONS);
     ierr = PetscLogEventBegin(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
-    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, chargeNums[i], srcXYZ[i], srcMag[i], 1e-5, Nmax, solution[i]);
+    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, chargeNums[i], srcXYZ[i], srcMag[i], 1e-5, Nmax, solution[i], &freeE);
     ierr = PetscLogEventEnd(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
   }
   //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
+#define __FUNCT__ "WorkPrecExample"
+PetscErrorCode WorkPrecExample()
+{
+  PetscErrorCode ierr;
+  
+  const PetscInt NUM_SOLUTIONS = 50;
+  const PetscInt EXACT_NUM   = NUM_SOLUTIONS+10;
+  const PetscInt NUM_CHARGES = 4;
+  Vec srcXYZ, srcMag;
+  Vec potential[NUM_SOLUTIONS];
+  Vec potExact;
+  Vec solution;
+  PetscScalar *solutionArray;
+  PetscReal exact;
+  PetscInt i;
+  PetscLogEvent events[NUM_SOLUTIONS];
+  const PetscInt Nmin = 0;
+  const PetscInt Nstep = 1;
+  PetscInt N;
+  char tText[30] = "Free energy with Nmax = %d";
+  char eText[30];
+  PetscInt tempNum;
+
+  EllipsoidalSystem e;
+  PetscFunctionBegin;
+
+  const PetscReal eps1 = 4.0;
+  const PetscReal eps2 = 80.0;
+
+  const PetscReal a = 3.0;
+  const PetscReal b = 2.0;
+  const PetscReal c = 1.0;
+
+  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  
+  /* create charge vectors and initialize with random values */
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*NUM_CHARGES, &srcXYZ);CHKERRQ(ierr);
+  ierr = VecCreateSeq(PETSC_COMM_SELF,   NUM_CHARGES, &srcMag);CHKERRQ(ierr);
+  ierr = RandomEllipsoidPoints(a, b, c, srcXYZ);CHKERRQ(ierr);
+  ierr = RandomMag(srcMag);CHKERRQ(ierr);
+  ierr = VecSet(srcMag, 1.0);CHKERRQ(ierr);
+  //ierr = VecScale(srcMag, 1./NUM_CHARGES);CHKERRQ(ierr); //scale charge magnitudes so total energy is more normalized
+  
+  for(i=0; i<NUM_SOLUTIONS; ++i) {
+    /* register events for flop counting */
+    N = Nmin + Nstep*i;
+    sprintf(eText, tText, N);
+    ierr = PetscLogEventRegister((const char*) eText, 0, events+i);CHKERRQ(ierr);
+    /* create potential vectors */
+    ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_CHARGES, potential+i);CHKERRQ(ierr);
+  }
+  /* create free energy solution vector */
+  ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOLUTIONS, &solution);CHKERRQ(ierr);
+  
+  ierr = VecGetArray(solution, &solutionArray);CHKERRQ(ierr);
+  /* approximate solutions */
+  for(i=0; i < NUM_SOLUTIONS; ++i) {
+    N = Nmin + Nstep*i;
+    printf("calculating solution %d/%d\n", i+1, NUM_SOLUTIONS);
+    printf("NNNNN = %d\n", N);
+    ierr = PetscLogEventBegin(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
+    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, NUM_CHARGES, srcXYZ, srcMag, 1e-16, N, potential[i], solutionArray+i);CHKERRQ(ierr);
+    //ierr = VecView(solution, PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    ierr = VecView(potential[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+    ierr = PetscLogEventEnd(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
+  }
+
+  
+  /* exact(ish) solution */
+  ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_CHARGES, &potExact);CHKERRQ(ierr);
+  printf("calculating exact solution\n");
+  ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, NUM_CHARGES, srcXYZ, srcMag, 1e-16, EXACT_NUM, potExact, &exact);CHKERRQ(ierr);
+
+
+  FILE *fp = fopen("out/workprec.txt", "w");
+  fprintf(fp, "work   precision\n");
+  PetscReal errVal;
+  PetscEventPerfInfo info;
+  //* calculate error for approximate solutions */
+  for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
+    errVal = PetscAbsReal((solutionArray[i] - exact)/(exact));
+    ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, events[i], &info);CHKERRQ(ierr);
+    fprintf(fp, "%4.4e %4.4e\n", info.flops, errVal);
+    printf("exact: %15.15f\n", solutionArray[i]);
+  }
+  fclose(fp);
+  ierr = VecRestoreArray(solution, &solutionArray);CHKERRQ(ierr);
+
   PetscFunctionReturn(0);
 }
 
@@ -816,7 +910,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
 #define __FUNCT__ "GridAnimation"
 PetscErrorCode GridAnimation()
 {
-  const PetscInt NUM_SOLUTIONS = 12;
+  const PetscInt NUM_SOLUTIONS = 8;
   PetscErrorCode ierr;
   Vec sourceXYZ, sourceMag, tarXYZ;
   Vec solution[NUM_SOLUTIONS], solutionEx[NUM_SOLUTIONS], errorVec[NUM_SOLUTIONS];
@@ -827,17 +921,20 @@ PetscErrorCode GridAnimation()
   PetscInt ind;
   PetscFunctionBegin;
 
-  PetscReal eps1 = 1.0;
-  PetscReal eps2 = 1.0;
-  PetscInt nSrc  = 1;
-  PetscInt nx    = 10;
-  PetscReal xl   = -5;
-  PetscReal xr   = 5;
-  PetscInt ny    = 10;
-  PetscReal yl   = -5;
-  PetscReal yr   =  5;
-  PetscReal zConst = -3;
-  
+  PetscReal eps1 = 2.0;
+  PetscReal eps2 = 60.0;
+  PetscInt nSrc  = 5;
+  PetscInt nx    = 20;
+  PetscReal xl   = -5.13;
+  PetscReal xr   = 5.13;
+  PetscInt ny    = 20;
+  PetscReal yl   = -4.02;
+  PetscReal yr   =  4.02;
+  PetscReal zConst = -.2;
+
+
+  xh = (xr-xl)/ny;
+  yh = (yr-yl)/ny;
   
   const PetscReal a = 3.0;
   const PetscReal b = 2.0;
@@ -868,7 +965,7 @@ PetscErrorCode GridAnimation()
   // calculate the solvation potential
   for(PetscInt i=0; i < NUM_SOLUTIONS; ++i) {
     printf("wow\n");
-    ierr = CoulombExactZeroInside(a, b, c, eps1, sourceXYZ, sourceMag, tarXYZ, solutionEx[i]);
+    ierr = CoulombExact(eps1, sourceXYZ, sourceMag, tarXYZ, solutionEx[i]);
     //ierr = VecCopy(tarXYZ, tester);
     printf("eps: %15.15f\n", eps1);
     ierr = CalcEllipsoidTester( a , b , c,
@@ -887,9 +984,9 @@ PetscErrorCode GridAnimation()
     ierr = VecAXPY(errorVec[i], -1.0, solution[i]);
     ierr = VecNorm(errorVec[i], NORM_2, &err);
     printf("\n");
-    printf("the error on %d is %15.15f\n", i, err);
-    printf("solutionEx[%d] = %15.15f\n", 0, solEx0);
-    printf("solution[%d]   = %15.15f\n", 0, sol0);
+    printf("the error on %d is %15.15f\n", i, err*xh*yh);
+    //printf("solutionEx[%d] = %15.15f\n", 0, solEx0);
+    //printf("solution[%d]   = %15.15f\n", 0, sol0);
     //printf("exact:\n");
     //ierr = VecView(solutionEx[i], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
     //printf("approx:\n");
@@ -1032,6 +1129,8 @@ PetscErrorCode WriteToFile(const char *fname, PetscInt rowsize, Vec values)
   PetscFunctionReturn(0);
 }
 
+
+
 #undef __FUNCT__
 #define __FUNCT__ "SolutionAnimation"
 PetscErrorCode SolutionAnimation()
@@ -1062,6 +1161,42 @@ PetscErrorCode SolutionAnimation()
 
   PetscFunctionReturn(0);
 }
+
+
+#undef __FUNCT__
+#define __FUNCT__ "testLame"
+PetscErrorCode testLame()
+{
+  PetscErrorCode ierr;
+  PetscInt n, p;
+  PetscInt Nmax;
+  PetscReal Fnp;
+  PetscReal Enp;
+  PetscReal a, b, c;
+  PetscReal cval;
+  PetscInt signm, signn;
+  EllipsoidalSystem e;
+  PetscFunctionBegin;
+
+  cval = .3;
+  signm = -1;
+  signn = 1;
+  
+  a = 3.0; b = 2.0; c = 1.0;
+  initEllipsoidalSystem(&e, a, b, c);
+  FILE *fp = fopen("newellout.txt", "w");
+  Nmax = 6;
+  for(n=0; n < Nmax; ++n) {
+    for(p=0; p < 2*n+1; ++p) {
+      ierr = calcLame(&e, n, p, cval, signm, signn, &Enp);CHKERRQ(ierr);
+      fprintf(fp, "%d %d %15.15f\n", n, p, Enp);
+    }
+  }
+  fclose(fp);
+
+  PetscFunctionReturn(0);
+}
+
 
 #undef __FUNCT__
 #define __FUNCT__ "main"
@@ -1100,8 +1235,10 @@ PetscErrorCode main( int argc, char **argv )
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
   //ierr = SolutionAnimation(); //<---- total crap
   //ierr = GridAnimation();CHKERRQ(ierr);
-  //ierr = WorkPrecExample(Nmax);
-  runTest1();
+  //ierr = ChargeFlopsExample(10);
+  ierr = WorkPrecExample();
+  //runTest1();
+  //testLame();
 
   //ierr = numChargesPlot(100, 500, 100);
   ierr = PetscFinalize();CHKERRQ(ierr);

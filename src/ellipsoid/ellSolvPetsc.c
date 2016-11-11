@@ -43,7 +43,7 @@ PetscErrorCode HowMany(PetscInt N, PetscInt *num)
 
 #undef __FUNCT__
 #define __FUNCT__ "CalcEllipsoidFreeEnergy"
-PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol)
+PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol, PetscReal *freeE)
 {
   PetscErrorCode ierr;
   PetscInt flopCount;
@@ -54,6 +54,7 @@ PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, Pet
   PetscScalar *tarEllArray;
   Vec coulCoefs, reactCoefs, extCoefs;
   const PetscScalar *coulCoefsArray, *reactCoefsArray, *extCoefsArray;
+  const PetscScalar *srcMagArray;
   Vec EnpVals, FnpVals;
   const PetscScalar *EnpValsArray, *FnpValsArray;
   PetscScalar *tarSolArray;
@@ -106,7 +107,6 @@ PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, Pet
       ierr = VecGetArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);
       //ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
       for(PetscInt k=0; k < nSrc; ++k) {
-	if(n==0 && p==0) tarSolArray[k] = 0;
 	PetscReal Enp = EnpValsArray[k];
 	//PetscReal Fnp = FnpValsArray[k];
 	tarSolArray[k] += Bnp*Enp; flopCount += 2;
@@ -117,6 +117,17 @@ PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, Pet
       ind++;
     }
   }
+  // get read-only pointers for expansion coefficients
+  ierr = VecRestoreArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(reactCoefs, &reactCoefsArray);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(extCoefs, &extCoefsArray);CHKERRQ(ierr);
+  *freeE = 0;
+  ierr = VecGetArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
+  /* calculate free energy */
+  for(PetscInt k=0; k < nSrc; ++k) {
+    *freeE += srcMagArray[k]*tarSolArray[k];
+  }
+  ierr = VecRestoreArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
   ierr = VecRestoreArray(tarSol, &tarSolArray);CHKERRQ(ierr);
   ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -202,9 +213,9 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
 	PetscReal Enp = EnpValsArray[k];
 	PetscReal Fnp = FnpValsArray[k];
 	if(PetscAbsReal(lambda) <= a)
-	  tarSolArray[k] += 0; //(Gnp/eps1)*Fnp;
+	  tarSolArray[k] += Bnp*Enp; //(Gnp/eps1)*Fnp;
 	else
-	  tarSolArray[k] += (Gnp/eps1)*Fnp;
+	  tarSolArray[k] += Cnp*Fnp;//(Gnp/eps1)*Fnp;
 	
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);

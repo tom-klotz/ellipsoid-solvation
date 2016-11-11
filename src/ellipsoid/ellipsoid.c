@@ -53,8 +53,8 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->DmaxN = 0;
   s->RmaxN = 0;
 
-  //default init Romain constants to order 35
-  int N = 35;
+  //default init Romain constants to order 40
+  int N = 80;
   
   
   s->a = a;
@@ -1011,7 +1011,7 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
     //printf("wowze\n");
     if(n != 0) {
       //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
-      ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrix(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
       //e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
       ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
       if(n != 1) {
@@ -1579,7 +1579,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
     printf("Please give a positive number of significant digits\n");
     return 1;
   }
-  digits = 20;
+  digits = 16;
   /* Create high precision storage */
 
 
@@ -1607,7 +1607,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
 
 
   //DELETE LATER
-  int maxL = 7;
+  int maxL = 6;
   double *SUMS = (double*) malloc(sizeof(double)*maxL);
   int *insideSums = (int*) malloc(sizeof(int)*maxL);
 
