@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import Ellipse
 
-WP = loadtxt('out/workprec.txt', skiprows=3)
+WP = loadtxt('out/workprec.txt', skiprows=1)
 
 P = WP[:,1]
 Pp1 = P[1:]

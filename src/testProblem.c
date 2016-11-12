@@ -9,7 +9,6 @@
 #include "ellipsoid/ellSolv.h"
 #include "sphere/sphere.h"
 #include "sphere/sphSolv.h"
-#include <gsl/gsl_rng.h>
 #include "constants.h"
 #include "testProblem.h"
 
