@@ -97,6 +97,84 @@ PetscErrorCode inte(mpfr_t *x, mpfr_t *val, void *ctx)
 
 
 #undef __FUNCT__
+#define __FUNCT__ "FindStepSize"
+PetscErrorCode FindStepSize(PetscInt prec, PetscInt nPts, mpfr_t *step)
+{
+  PetscErrorCode ierr;
+  const PetscReal tol = 0.3;
+  mpfr_t wk, tmp, h, hl, hr, lwk, rwk, swk, slwk, srwk, error;
+  PetscInt cont;
+  PetscFunctionBegin;
+
+  if(prec < 1) {
+    printf("prec should be positive\n");
+    PetscFunctionReturn(1);
+  }
+    
+  mpfr_inits(wk, tmp, h, hl, hr, lwk, rwk, swk, slwk, srwk, error, NULL);
+
+  mpfr_set_d(hl, 0.0, MPFR_RNDN);
+  mpfr_set_d(hr, 2.0, MPFR_RNDN);
+
+  /* make hr large enough */
+  mpfr_set_d(hr, 1.0, MPFR_RNDN);
+  cont = 1;
+  while(cont == 1) {
+    ierr = DEwk(nPts, hr, &rwk);CHKERRQ(ierr);
+    mpfr_log10(srwk, rwk, MPFR_RNDN);
+    if(mpfr_get_d(srwk, MPFR_RNDN) < -2*prec)
+      cont = 0;
+    else
+      mpfr_mul_d(hr, hr, 2.0, MPFR_RNDN); // make hr larger if value not small
+  }
+
+  /* make hl small enough */
+  mpfr_mul_d(hl, hr, 0.5, MPFR_RNDN);
+  cont = 1;
+  while(cont == 1) {
+    ierr = DEwk(nPts, hl, &lwk);CHKERRQ(ierr);
+    mpfr_log10(slwk, lwk, MPFR_RNDN);
+    if(mpfr_get_d(slwk, MPFR_RNDN) > -2*prec)
+      cont = 0;
+    else
+      mpfr_mul_d(hl, hl, 0.5, MPFR_RNDN); // make hl larger if value not small
+  }
+  
+  //ierr = DEwk(nPts, hl, &lwk);CHKERRQ(ierr);
+  //ierr = DEwk(nPts, hr, &rwk);CHKERRQ(ierr);
+
+  cont = 1;
+  while(cont == 1) {
+    // average hl and hr
+    mpfr_add(h, hl, hr, MPFR_RNDN);
+    mpfr_mul_d(h, h, 0.5, MPFR_RNDN);
+    
+    // calculate weight and size
+    ierr = DEwk(nPts, h, &wk);CHKERRQ(ierr);
+    ierr = DEwk(nPts, hl, &lwk);CHKERRQ(ierr);
+    ierr = DEwk(nPts, hr, &rwk);CHKERRQ(ierr);
+    mpfr_log10(swk, wk, MPFR_RNDN);
+    mpfr_log10(slwk, lwk, MPFR_RNDN);
+    mpfr_log10(srwk, rwk, MPFR_RNDN);
+    if( mpfr_get_d(swk, MPFR_RNDN) < -2*prec)
+      mpfr_set(hr, h, MPFR_RNDN);
+    else
+      mpfr_set(hl, h, MPFR_RNDN);
+    // calculate maximum possible error
+    mpfr_sub(error, slwk, srwk, MPFR_RNDN);
+    mpfr_abs(error, error, MPFR_RNDN);
+    if(mpfr_get_d(error, MPFR_RNDN) < tol)
+       cont = 0;
+  }
+  
+  mpfr_set(*step, h, MPFR_RNDN);
+  
+  mpfr_clears(wk, tmp, h, hl, hr, lwk, rwk, swk, slwk, srwk, error, NULL);
+  PetscFunctionReturn(0);
+}
+
+
+#undef __FUNCT__
 #define __FUNCT__ "DEQuad"
 PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr_t b, PetscInt prec, PetscInt nPts, mpfr_t *integral, void *ctx)
 {
@@ -136,8 +214,8 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   mpfr_mul_d(beta, beta, 0.5, MPFR_RNDN);
   
   /* determine right step size */
-  //ierr = FindStepSize(
-  mpfr_set_d(h, 0.04, MPFR_RNDN); 
+  ierr = FindStepSize(prec, nSide, &h);
+  //mpfr_set_d(h, 0.04, MPFR_RNDN); 
 
 
   /* calculate abscissas, weights */
@@ -151,6 +229,7 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   mpfr_mul_d(lx, lx, .5, MPFR_RNDN);
   f(&lx, &sum, ctx);
   mpfr_mul(sum, sum, wkVals[0], MPFR_RNDN);
+  mpfr_mul(sum, sum, alpha,     MPFR_RNDN);
   
   
   for(k=1; k <= nSide; ++k) {
@@ -180,14 +259,10 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
     //printf("rightval: %15.15f\n", l2);
     mpfr_add(sum, sum, leftFx, MPFR_RNDN);
     mpfr_add(sum, sum, rightFx, MPFR_RNDN);
-    double prog = mpfr_get_d(sum, MPFR_RNDN);
-    printf("sum: %15.15f\n", prog);
   }
-
+  double prog = mpfr_get_d(sum, MPFR_RNDN);
+  printf("sum: %15.15f\n", prog);
   
-  
-  free(xkVals);
-  free(wkVals);
   
   mpfr_clears(alpha, beta, leftXk, rightXk, wk, leftFx, rightFx, pi2, kh, h, sum, lx, rx, NULL);
   for(k=0; k<nSide+1; ++k)

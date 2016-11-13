@@ -32,10 +32,13 @@ PetscErrorCode main(int argc, char **argv)
   mpfr_set_d(b, 3.0, MPFR_RNDN);
 
 
+  int fac = 1;
+  for(int i=0; i<10; ++i) {
+    printf("\n########################################################\n");
+    ierr = DEQuad(inte, a, b, PRECISION, fac*nPts, &val, NULL);CHKERRQ(ierr);
+    fac *= 2;
+  }
   
-  ierr = DEQuad(inte, a, b, PRECISION, nPts, &val, NULL);CHKERRQ(ierr);
-  printf("\n########################################################\n");
-  ierr = DEQuad(inte, a, b, PRECISION, 2*nPts, &val, NULL);CHKERRQ(ierr);
   
   ierr = PetscFinalize();CHKERRQ(ierr);
   PetscFunctionReturn(0);
