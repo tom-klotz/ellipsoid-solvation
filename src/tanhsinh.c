@@ -35,7 +35,6 @@ PetscErrorCode DEwk(PetscInt k, mpfr_t h, mpfr_t *wk)
   PetscFunctionReturn(0);
 }
 
-
 /* generates n weights spaced h apart in the positive direction */
 /* includes "center" n=0 weight as first entry */
 #undef __FUNCT__
@@ -127,7 +126,7 @@ PetscErrorCode FindStepSize(PetscInt prec, PetscInt nPts, mpfr_t *step)
     else
       mpfr_mul_d(hr, hr, 2.0, MPFR_RNDN); // make hr larger if value not small
   }
-
+  //printf("hr: %15.15f\n", mpfr_get_d(hr, MPFR_RNDN));
   /* make hl small enough */
   mpfr_mul_d(hl, hr, 0.5, MPFR_RNDN);
   cont = 1;
@@ -139,7 +138,7 @@ PetscErrorCode FindStepSize(PetscInt prec, PetscInt nPts, mpfr_t *step)
     else
       mpfr_mul_d(hl, hl, 0.5, MPFR_RNDN); // make hl larger if value not small
   }
-  
+  //printf("hl: %15.15f\n", mpfr_get_d(hl, MPFR_RNDN));
   //ierr = DEwk(nPts, hl, &lwk);CHKERRQ(ierr);
   //ierr = DEwk(nPts, hr, &rwk);CHKERRQ(ierr);
 
@@ -176,7 +175,7 @@ PetscErrorCode FindStepSize(PetscInt prec, PetscInt nPts, mpfr_t *step)
 
 #undef __FUNCT__
 #define __FUNCT__ "DEQuad"
-PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr_t b, PetscInt prec, PetscInt nPts, mpfr_t *integral, void *ctx)
+PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr_t b, PetscInt prec, PetscInt nPts, PetscReal *integral, void *ctx)
 {
   PetscErrorCode ierr;
   PetscInt k;
@@ -221,7 +220,6 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   /* calculate abscissas, weights */
   ierr = DExkwk(nSide+1, h, &xkVals, &wkVals);CHKERRQ(ierr);
 
-  
   /* center term */
   mpfr_set_d(sum, 0.0, MPFR_RNDN);
   mpfr_set(lx, b, MPFR_RNDN);
@@ -243,10 +241,12 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
 
     double left = mpfr_get_d(lx, MPFR_RNDN);
     double right = mpfr_get_d(rx, MPFR_RNDN);
+    double xk = mpfr_get_d(xkVals[k], MPFR_RNDN);
+
     
     /* calculate function values */
-    f(&lx, &leftFx , NULL);
-    f(&rx, &rightFx, NULL);
+    f(&lx, &leftFx , ctx);
+    f(&rx, &rightFx, ctx);
 
     /* update sum */
     mpfr_mul(leftFx, leftFx, wkVals[k], MPFR_RNDN);
@@ -260,9 +260,10 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
     mpfr_add(sum, sum, leftFx, MPFR_RNDN);
     mpfr_add(sum, sum, rightFx, MPFR_RNDN);
   }
-  double prog = mpfr_get_d(sum, MPFR_RNDN);
-  printf("sum: %15.15f\n", prog);
+  PetscReal prog = mpfr_get_d(sum, MPFR_RNDN);
+  //printf("sum: %15.15f\n", prog);
   
+  *integral = prog;
   
   mpfr_clears(alpha, beta, leftXk, rightXk, wk, leftFx, rightFx, pi2, kh, h, sum, lx, rx, NULL);
   for(k=0; k<nSide+1; ++k)
