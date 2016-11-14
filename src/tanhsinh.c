@@ -15,7 +15,7 @@ PetscErrorCode DEwk(PetscInt k, mpfr_t h, mpfr_t *wk)
   PetscErrorCode ierr;
   mpfr_t kh, msinh, mcosh, piOver2, tmp;
   PetscFunctionBegin;
-
+  
   mpfr_inits(kh, msinh, mcosh, piOver2, tmp, NULL);
 
   //init piOver2
@@ -32,6 +32,7 @@ PetscErrorCode DEwk(PetscInt k, mpfr_t h, mpfr_t *wk)
   mpfr_sqr(tmp, tmp, MPFR_RNDN);
   mpfr_mul(*wk, *wk, mcosh, MPFR_RNDN);
   mpfr_div(*wk, *wk, tmp, MPFR_RNDN);
+
   PetscFunctionReturn(0);
 }
 
@@ -45,13 +46,15 @@ PetscErrorCode DExkwk(PetscInt n, mpfr_t h, mpfr_t **xk, mpfr_t **wk)
   PetscInt k;
   mpfr_t kh, msinh, mcosh, piOver2, tmp;
   PetscReal alp, bet;
+  PetscInt flopCount;
   PetscFunctionBegin;
+  flopCount = 0;
   
   mpfr_inits(kh, msinh, mcosh, piOver2, tmp, NULL);
 
   // init piOver2
   mpfr_const_pi(piOver2, MPFR_RNDN);
-  mpfr_mul_d(piOver2, piOver2, 0.5, MPFR_RNDN);
+  mpfr_mul_d(piOver2, piOver2, 0.5, MPFR_RNDN); flopCount ++;
   
   
   for(k=0; k<n; ++k) {
@@ -65,18 +68,20 @@ PetscErrorCode DExkwk(PetscInt n, mpfr_t h, mpfr_t **xk, mpfr_t **wk)
     mpfr_cosh(tmp, msinh, MPFR_RNDN);
     mpfr_sqr(tmp, tmp, MPFR_RNDN);
     mpfr_mul((*wk)[k], (*wk)[k], mcosh, MPFR_RNDN);
-    mpfr_div((*wk)[k], (*wk)[k], tmp, MPFR_RNDN);
+    mpfr_div((*wk)[k], (*wk)[k], tmp, MPFR_RNDN); flopCount += 9;
 
     /* calculate xk */
     mpfr_set_d((*xk)[k], 1.0, MPFR_RNDZ);
     mpfr_cosh(tmp, msinh, MPFR_RNDN);
     mpfr_div((*xk)[k], (*xk)[k], tmp, MPFR_RNDZ);
     mpfr_exp(tmp, msinh, MPFR_RNDN);
-    mpfr_div((*xk)[k], (*xk)[k], tmp, MPFR_RNDZ);
+    mpfr_div((*xk)[k], (*xk)[k], tmp, MPFR_RNDZ); flopCount += 4;
 
     
   }
   mpfr_clears(kh, msinh, mcosh, piOver2, tmp, NULL);
+
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -86,11 +91,14 @@ PetscErrorCode DExkwk(PetscInt n, mpfr_t h, mpfr_t **xk, mpfr_t **wk)
 PetscErrorCode inte(mpfr_t *x, mpfr_t *val, void *ctx)
 {
   PetscErrorCode ierr;
+  PetscInt flopCount;
   PetscFunctionBegin;
-
+  flopCount = 0;
+  
   mpfr_mul(*val, *x, *x, MPFR_RNDN);
-  mpfr_mul(*val, *val, *x, MPFR_RNDN);
+  mpfr_mul(*val, *val, *x, MPFR_RNDN); flopCount += 2;
 
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }
 
@@ -190,12 +198,16 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   mpfr_t pi2;
   mpfr_t kh, h;
   mpfr_t sum;
+  PetscInt flopCount;
   PetscFunctionBegin;
-
-  if(nPts % 2 == 0)
-    nSide = nPts/2;
-  if(nPts % 2 == 1)
-    nSide = (nPts-1)/2;
+  flopCount = 0;
+  
+  if(nPts % 2 == 0) {
+    nSide = nPts/2; flopCount++;
+  }
+  if(nPts % 2 == 1) {
+    nSide = (nPts-1)/2; flopCount++;
+  }
 
   /* initializations */
   mpfr_inits(alpha, beta, leftXk, rightXk, wk, leftFx, rightFx, pi2, kh, h, sum, lx, rx, NULL);
@@ -210,11 +222,11 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   mpfr_mul_d(alpha, alpha, 0.5, MPFR_RNDN);
   mpfr_set(beta, b, MPFR_RNDN);
   mpfr_add(beta, beta, a, MPFR_RNDN);
-  mpfr_mul_d(beta, beta, 0.5, MPFR_RNDN);
+  mpfr_mul_d(beta, beta, 0.5, MPFR_RNDN); flopCount += 4;
   
   /* determine right step size */
-  ierr = FindStepSize(prec, nSide, &h);
-  //mpfr_set_d(h, 0.04, MPFR_RNDN); 
+  ierr = FindStepSize(prec, nSide, &h); // not including in flop count
+  //mpfr_set_d(h, 0.04, MPFR_RNDN);  
 
 
   /* calculate abscissas, weights */
@@ -227,7 +239,7 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   mpfr_mul_d(lx, lx, .5, MPFR_RNDN);
   f(&lx, &sum, ctx);
   mpfr_mul(sum, sum, wkVals[0], MPFR_RNDN);
-  mpfr_mul(sum, sum, alpha,     MPFR_RNDN);
+  mpfr_mul(sum, sum, alpha,     MPFR_RNDN); flopCount += 4;
   
   
   for(k=1; k <= nSide; ++k) {
@@ -237,7 +249,7 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
     mpfr_add(lx, lx, beta, MPFR_RNDU);
     mpfr_d_sub(rx, 1.0, xkVals[k], MPFR_RNDZ);
     mpfr_mul(rx, rx, alpha, MPFR_RNDD);
-    mpfr_add(rx, rx, beta , MPFR_RNDD);
+    mpfr_add(rx, rx, beta , MPFR_RNDD); flopCount += 6;
 
     double left = mpfr_get_d(lx, MPFR_RNDN);
     double right = mpfr_get_d(rx, MPFR_RNDN);
@@ -258,7 +270,7 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
     //printf("leftval: %15.15f\n", l1);
     //printf("rightval: %15.15f\n", l2);
     mpfr_add(sum, sum, leftFx, MPFR_RNDN);
-    mpfr_add(sum, sum, rightFx, MPFR_RNDN);
+    mpfr_add(sum, sum, rightFx, MPFR_RNDN); flopCount += 6;
   }
   PetscReal prog = mpfr_get_d(sum, MPFR_RNDN);
   //printf("sum: %15.15f\n", prog);

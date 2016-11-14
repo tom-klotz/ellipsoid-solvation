@@ -56,7 +56,6 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   //default init Romain constants to order 40
   int N = 80;
   
-  
   s->a = a;
   s->b = b;
   s->c = c;
@@ -1205,11 +1204,11 @@ PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, 
 PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
 {
   PetscErrorCode ierr;
-  PetscInt countFlops;
+  PetscInt flopCount;
   PetscFunctionBegin;
-  countFlops = 0;
+  flopCount = 0;
   mpfr_t *temp = &((*ctx).e->temp1);
-  mpfr_d_div(*temp, 1.0, *x, MPFR_RNDN);
+  mpfr_d_div(*temp, 1.0, *x, MPFR_RNDN); flopCount ++;
   double s = mpfr_get_d(*temp, MPFR_RNDZ);
   double E;
   ierr = calcLame((*ctx).e, (*ctx).n, (*ctx).p, s, ctx->signm, ctx->signn, &E);CHKERRQ(ierr);
@@ -1223,12 +1222,12 @@ PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx)
   mpfr_sqrt(*val,  *val,  MPFR_RNDN);
   mpfr_mul(*val, *temp, *val, MPFR_RNDN);
   mpfr_mul_d(*val, *val, E, MPFR_RNDN);
-  mpfr_mul_d(*val, *val, E, MPFR_RNDN);
+  mpfr_mul_d(*val, *val, E, MPFR_RNDN); flopCount += 10;
   
-  mpfr_d_div(*val, 1.0, *val, MPFR_RNDN);
+  mpfr_d_div(*val, 1.0, *val, MPFR_RNDN); flopCount++;
   //printf("\n\n\nVAL: %15.15f\n\n\n", mpfr_get_d(*val, MPFR_RNDN));
   
-  ierr = PetscLogFlops(12);
+  ierr = PetscLogFlops(flopCount);
   PetscFunctionReturn(0);
 }
 
@@ -1322,20 +1321,17 @@ PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
   mpfr_d_sub(*val, e->k2, *temp, MPFR_RNDN);
   mpfr_sub_d(*temp, *temp, e->h2, MPFR_RNDN);
   mpfr_mul(*val, *temp, *val, MPFR_RNDN);
-  mpfr_mul_d(*val, *val, (double) denomSign, MPFR_RNDN);
-  flopCount += 5;
+  mpfr_mul_d(*val, *val, (double) denomSign, MPFR_RNDN); flopCount += 5;
   if(mpfr_get_d(*val, MPFR_RNDN) < 0 && fabs(mpfr_get_d(*val, MPFR_RNDN)) < tol) {
-    mpfr_mul_d(*val, *val, -1.0, MPFR_RNDN);
-    flopCount++;
+    mpfr_mul_d(*val, *val, -1.0, MPFR_RNDN); flopCount++;
   }
   mpfr_sqrt(*temp, *val, MPFR_RNDN);
   mpfr_set_d(*val, top, MPFR_RNDN);
-  mpfr_mul_d(*val, *val, top, MPFR_RNDN);
+  mpfr_mul_d(*val, *val, top, MPFR_RNDN); flopCount += 2;
   flopCount += 3;
   if(numeratorType == 1) {
     mpfr_mul(*val, *val, *x, MPFR_RNDN);
-    mpfr_mul(*val, *val, *x, MPFR_RNDN);
-    flopCount += 2;
+    mpfr_mul(*val, *val, *x, MPFR_RNDN); flopCount += 2;
   }
   //printf("val before is %8.8e\n", mpfr_get_d(*val, MPFR_RNDN));
   //printf("denom before is %8.8e\n", mpfr_get_d(*temp, MPFR_RNDN));
@@ -1415,13 +1411,13 @@ PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *nor
   mpfr_t *mpfrzero = &(e->mpfrzero);
   mpfr_t *mpfrone  = &(e->mpfrone);
   
-  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals, &ctx1);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals, &ctx1);
 
-  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 14, integrals+1, &ctx2);
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals+1, &ctx2);
 
-  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+2, &ctx3);
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+2, &ctx3);
 
-  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 14, integrals+3, &ctx4);
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+3, &ctx4);
 
   *normConst = 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);
 
@@ -1711,7 +1707,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
     mpfr_log10(*tmp, *curTerm, MPFR_RNDN);
     d4 = mpfr_get_d(*tmp, MPFR_RNDN);
     d  = (int) fabs(min(0, max(max(max((d1*d1)/d2, 2*d1), d3), d4))); flopCount += 9;
-    
+
   } while (d < digits && l < maxL);
 
   *integral = mpfr_get_d(*sum, MPFR_RNDN);
