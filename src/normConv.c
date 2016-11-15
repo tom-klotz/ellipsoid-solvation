@@ -52,8 +52,8 @@ PetscErrorCode NormConstantIntFixed(EllipsoidalSystem *e, PetscInt n, PetscInt p
 #define __FUNCT__ "NormPlot"
 PetscErrorCode NormPlot()
 {
-  const PetscInt NUM_SOLUTIONS = 50;
-  const PetscInt POINTS_MIN = 2;
+  const PetscInt NUM_SOLUTIONS = 43;
+  const PetscInt POINTS_MIN = 4;
   const PetscInt POINTS_STEP = 2;
   const PetscInt prec = 16;
   const PetscReal a = 3.0;
@@ -68,6 +68,8 @@ PetscErrorCode NormPlot()
   PetscErrorCode ierr;
   PetscInt i;
   PetscEventPerfInfo info;
+  PetscInt n = 3;
+  PetscInt p = 5;
   PetscFunctionBegin;
 
   
@@ -80,19 +82,19 @@ PetscErrorCode NormPlot()
     sprintf(sText, text, POINTS_MIN + POINTS_STEP*i);
     ierr = PetscLogEventRegister(sText, 0, flopCounts+i);CHKERRQ(ierr);
     ierr = PetscLogEventBegin(flopCounts[i], 0, 0, 0, 0);CHKERRQ(ierr);
-    ierr = NormConstantIntFixed(&e, 3, 2, prec, POINTS_MIN + POINTS_STEP*i, solutions+i);CHKERRQ(ierr);
+    ierr = NormConstantIntFixed(&e, n, p, prec, POINTS_MIN + POINTS_STEP*i, solutions+i);CHKERRQ(ierr);
     ierr = PetscLogEventEnd(flopCounts[i], 0, 0, 0, 0);CHKERRQ(ierr);
     printf("new norm constant: %15.15f\n", solutions[i]);
   }
 
   /* calculate "exact" solution */
-  ierr = calcNormalization(&e, 3, 2, &solOld);CHKERRQ(ierr);
+  ierr = calcNormalization(&e, n, p, &solOld);CHKERRQ(ierr);
   printf("old norm constant: %15.15f\n", solOld);
 
 
   /* calculate errors */
   for(i=0; i<NUM_SOLUTIONS; ++i) {
-    errors[i] = PetscAbsReal(solOld - solutions[i]);
+    errors[i] = PetscAbsReal((solOld - solutions[i])/solutions[i]);
     printf("errors[%d] = %15.15f\n", i, errors[i]);
   }
 
@@ -116,7 +118,7 @@ PetscErrorCode main(int argc, char **argv)
 {
 
   const PetscInt NUM_DIGITS = 64;
-  const PetscInt PRECISION  = 16;
+  const PetscInt PRECISION  = 32;
   mpfr_t a, b;
   mpfr_t val;
   PetscErrorCode ierr;

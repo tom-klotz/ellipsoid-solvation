@@ -8,8 +8,32 @@ from matplotlib.patches import Ellipse
 
 WP = loadtxt('out/normWorkPrec.txt', skiprows=1)
 
-plt.figure(0)
-plt.semilogy(WP[:,1],WP[:,2])
-plt.figure(1)
-plt.semilogy(WP[:,0],WP[:,2])
+
+fig = plt.figure(0)
+fig.set_size_inches(7,5, forward=True)
+plt.rcParams.update({'font.size': 12})
+plt.rcParams['xtick.major.size'] = 4.5
+plt.rcParams['xtick.major.width'] = 2
+plt.rcParams['ytick.major.size'] = 4.5
+plt.rcParams['ytick.major.width'] = 2
+plt.semilogy(WP[:,1],WP[:,2], linewidth=3, linestyle='-', color='green')
+plt.title(r'FLOP-precision for $\gamma_3^5$', size=18)
+plt.xlabel('total FLOPS', size=14)
+plt.ylabel('relative error', size=14)
+plt.savefig('flopprec.eps', format='eps', dpi=2000)
+
+
+fig = plt.figure(1)
+fig.set_size_inches(7,5, forward=True)
+plt.rcParams.update({'font.size': 12})
+plt.rcParams['xtick.major.size'] = 4.5
+plt.rcParams['xtick.major.width'] = 2
+plt.rcParams['ytick.major.size'] = 4.5
+plt.rcParams['ytick.major.width'] = 2
+plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='blue')
+plt.title(r'Convergence for $\gamma_3^5$', size=18)
+plt.xlabel('# tanh-sinh nodes', size=14)
+plt.ylabel('relative error', size=14)
+plt.savefig('pointprec.eps', format='eps', dpi=2000)
+
 plt.show()

@@ -108,7 +108,7 @@ PetscErrorCode inte(mpfr_t *x, mpfr_t *val, void *ctx)
 PetscErrorCode FindStepSize(PetscInt prec, PetscInt nPts, mpfr_t *step)
 {
   PetscErrorCode ierr;
-  const PetscReal tol = 0.3;
+  const PetscReal tol = 1e-25;
   mpfr_t wk, tmp, h, hl, hr, lwk, rwk, swk, slwk, srwk, error;
   PetscInt cont;
   PetscFunctionBegin;
