@@ -214,8 +214,10 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
 	PetscReal Fnp = FnpValsArray[k];
 	if(PetscAbsReal(lambda) <= a)
 	  tarSolArray[k] += Bnp*Enp; //(Gnp/eps1)*Fnp;
-	else
+	else {
 	  tarSolArray[k] += Cnp*Fnp;//(Gnp/eps1)*Fnp;
+	}
+	
 	
       }
       ierr = VecRestoreArrayRead(EnpVals, &EnpValsArray);CHKERRQ(ierr);

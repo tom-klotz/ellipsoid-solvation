@@ -1603,7 +1603,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
 
 
   //DELETE LATER
-  int maxL = 5;
+  int maxL = 6;
   double *SUMS = (double*) malloc(sizeof(double)*maxL);
   int *insideSums = (int*) malloc(sizeof(int)*maxL);
 
