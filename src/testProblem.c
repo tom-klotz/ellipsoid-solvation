@@ -697,9 +697,9 @@ PetscErrorCode WorkPrecExample()
 {
   PetscErrorCode ierr;
   
-  const PetscInt NUM_SOLUTIONS = 50;
+  const PetscInt NUM_SOLUTIONS = 45;
   const PetscInt EXACT_NUM   = NUM_SOLUTIONS+10;
-  const PetscInt NUM_CHARGES = 4;
+  const PetscInt NUM_CHARGES = 5;
   Vec srcXYZ, srcMag;
   Vec potential[NUM_SOLUTIONS];
   Vec potExact;
@@ -1233,9 +1233,9 @@ PetscErrorCode main( int argc, char **argv )
   
   //ierr = GridSolution(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst, NULL, NULL);CHKERRQ(ierr);
   //ierr = SolutionAnimation(); //<---- total crap
-  //ierr = GridAnimation();CHKERRQ(ierr);
+  ierr = GridAnimation();CHKERRQ(ierr);
   //ierr = ChargeFlopsExample(10);
-  ierr = WorkPrecExample();
+  //ierr = WorkPrecExample();
   //runTest1();
   //testLame();
 
