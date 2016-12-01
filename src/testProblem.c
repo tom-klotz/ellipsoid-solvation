@@ -243,6 +243,112 @@ PetscErrorCode RunArg()
   PetscFunctionReturn(0);
 }
 
+/* DOESN'T DO ANYTHING YET */
+#undef __FUNCT__
+#define __FUNCT__ "RunArgWorkPrec"
+PetscErrorCode RunArgWorkPrec()
+{
+  PetscErrorCode ierr;
+  char buff[64];
+  int npts;
+  double a, b, c;
+  double *xyz;
+  double *chargeValues;
+  double *solution;
+  double freeEnergy;
+
+  PetscFunctionBegin;
+  
+  //constants
+  const double q     = ELECTRON_CHARGE;
+  const double Na    = AVOGADRO_NUMBER;
+  const double JperC = 4.184; /* Jouled/Calorie */
+  const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/PETSC_PI; /* kcal ang/mol */
+
+
+  FILE *fp = fopen("ellArgData.txt", "r");
+  // READ NUMBER OF POINTS
+  fscanf(fp, "%s", buff); //skip "size: "
+  fscanf(fp, "%d", &npts);
+
+  //initialize local charges/coordinates arrays
+  xyz     = (double*) malloc(sizeof(double)*3*npts);
+  chargeValues = (double*) malloc(sizeof(double)*npts);
+  // READ A,B,C ELLIPSOID VALUES
+  fscanf(fp, "%s", buff); //skip "a: "
+  fscanf(fp, "%lf", &a); //read a value
+  fscanf(fp, "%s", buff); //skip "b: "
+  fscanf(fp, "%lf", &b); //read b value
+  fscanf(fp, "%s", buff); //skip "c: "
+  fscanf(fp, "%lf", &c);
+  // READ CHARGE X,Y,Z AND CHARGE DATA
+  for(int i=0; i<npts; ++i) {
+    fscanf(fp, "%lf", xyz+3*i+0); //read x coordinate
+    fscanf(fp, "%lf", xyz+3*i+1); //read y coordinate
+    fscanf(fp, "%lf", xyz+3*i+2); //read z coordinate
+    fscanf(fp, "%lf", chargeValues+i); //read charge
+    printf("%lf %lf %lf %lf\n", xyz[3*i+0], xyz[3*i+1], xyz[3*i+2], chargeValues[i]);
+  }
+  fclose(fp);
+
+
+  //initialize ellipsoidal system
+  EllipsoidalSystem e;
+  initEllipsoidalSystem(&e, a, b, c);
+  
+  //set charge positions and calculation points to be the same
+  Point *solPoints = (Point*) malloc(sizeof(Point)*npts);
+  Point *chargePoints = (Point*) malloc(sizeof(Point)*npts);
+  for(int i=0; i<npts; ++i) {
+    solPoints[i].x1 = xyz[3*i+0];
+    solPoints[i].x2 = xyz[3*i+1];
+    solPoints[i].x3 = xyz[3*i+2];
+    solPoints[i].type = 'c';
+    chargePoints[i] = solPoints[i];
+  }
+
+  //convert to ellipsoidal coordinates
+  for(int i=0; i<npts; ++i) {
+    cartesianToEllipsoidal(&e, solPoints+i);
+    cartesianToEllipsoidal(&e, chargePoints+i);
+  }
+  
+  //initialize ellipsoidal problem context
+  Problem prob;
+  prob.e = &e;
+  prob.positions = chargePoints;
+  prob.charges = chargeValues;
+  prob.nCharges = npts;
+  prob.e1 = 4.0;
+  prob.e2 = 80.0;
+  
+  //solution vector
+  solution = (double*) malloc(sizeof(double)*npts);
+  
+  //calculate potential on solPoints
+  calcCoulombEllipsoidalGrid(&prob, 10, solPoints, npts, solution);
+  printf("wow!\n");
+  for(int i=0; i<npts; ++i)
+    printf("solution[%d] = %15.15f\n", i, solution[i]);
+  for(int i=0; i<npts; ++i)
+    printf("chargeValues[%d] = %15.15f\n", i, chargeValues[i]);
+  
+  //calculate free energy
+  freeEnergy = 0;
+  for(int i=0; i<npts; ++i) {
+    freeEnergy += solution[i]*chargeValues[i];
+    printf("freeEnergy[%d] = %15.15f\n", i, freeEnergy*.5*cf);
+  }
+
+  
+  free(xyz);
+  free(chargeValues);
+  free(solPoints);
+  free(solution);
+  free(chargePoints);
+  PetscFunctionReturn(0);
+}
+
 #undef __FUNCT__
 #define __FUNCT__ "RunArgTester"
 PetscErrorCode RunArgTester()
