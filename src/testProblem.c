@@ -160,7 +160,7 @@ PetscErrorCode RunArg()
   const double cf    = Na * (q*q/EPSILON_0)/JperC * (1e10/1000) * 1/4/PETSC_PI; /* kcal ang/mol */
 
 
-  FILE *fp = fopen("../../pointbem/src/ellData.txt", "r");
+  FILE *fp = fopen("ellArgData.txt", "r");
   // READ NUMBER OF POINTS
   fscanf(fp, "%s", buff); //skip "size: "
   fscanf(fp, "%d", &npts);
@@ -916,7 +916,7 @@ PetscErrorCode GridSolution(PetscInt Nmax, PetscInt nSrc, PetscInt nx, PetscReal
   yh = (yr - yl) / (ny - 1);
 
 
-  ierr =RandomEllipsoidPoints(a, b, c, sourceXYZ);CHKERRQ(ierr);
+  ierr = RandomEllipsoidPoints(a, b, c, sourceXYZ);CHKERRQ(ierr);
 
   // populate source vec with points
   for(PetscInt k=0; k<nSrc; ++k) {
@@ -1348,7 +1348,8 @@ PetscErrorCode main( int argc, char **argv )
   //testLame();
 
   
-  ierr = GridAnimation();CHKERRQ(ierr);
+  ierr = RunArg();
+  //ierr = GridAnimation();CHKERRQ(ierr);
   //ierr = ChargeFlopsExample(10);CHKERRQ(ierr);
   //ierr = WorkPrecExample();CHKERRQ(ierr);
   //ierr = SphereLimitExample();CHKERRQ(ierr);
