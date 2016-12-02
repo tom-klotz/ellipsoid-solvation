@@ -858,7 +858,7 @@ PetscErrorCode ChargeFlopsExample(PetscInt Nmax)
   for(i=0; i < NUM_SOLUTIONS; ++i) {
     printf("calculating solution %d/%d\n", i+1, NUM_SOLUTIONS);
     ierr = PetscLogEventBegin(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
-    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, chargeNums[i], srcXYZ[i], srcMag[i], 1e-5, Nmax, solution[i], &freeE);
+    ierr = CalcEllipsoidFreeEnergy(&e, eps1, eps2, chargeNums[i], srcXYZ[i], srcMag[i], 1e-5, Nmax, solution[i], &freeE);CHKERRQ(ierr);
     ierr = PetscLogEventEnd(events[i], 0, 0, 0, 0);CHKERRQ(ierr);
   }
   //ierr = EasyExample(Nmax, nSrc, nx, xl, xr, ny, yl, yr, zConst);CHKERRQ(ierr);
