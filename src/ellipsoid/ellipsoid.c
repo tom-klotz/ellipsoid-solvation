@@ -1510,6 +1510,129 @@ PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *nor
   */
 }
 
+#undef __FUNCT__
+#define __FUNCT__ "calcNormalization2"
+PetscErrorCode calcNormalization2(EllipsoidalSystem *e, PetscInt n, PetscInt p, double *intVals, double *normConst)
+{
+  PetscErrorCode ierr;
+  
+  PetscFunctionBegin;
+
+  //double h = e->h;
+  //double h2 = e->h2;
+  //double k = e->k;
+  //double k2 = e->k2;
+  //The four integrals making up Romain (51)
+  //structs containing f unction info
+  FuncInfo2 ctx1 = { .e = e, .n = n, .p = p, .numeratorType = 0, .denomSign = 1 };
+  FuncInfo2 ctx2 = { .e = e, .n = n, .p = p, .numeratorType = 1, .denomSign = 1 };
+  FuncInfo2 ctx3 = { .e = e, .n = n, .p = p, .numeratorType = 0, .denomSign = -1 };
+  FuncInfo2 ctx4 = { .e = e, .n = n, .p = p, .numeratorType = 1, .denomSign = -1 };
+  int err[4];
+  double integrals[4];
+
+  mpfr_t *mpfrzero = &(e->mpfrzero);
+  mpfr_t *mpfrone  = &(e->mpfrone);
+  
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals, &ctx1);
+  intVals[0] = integrals[0];
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals+1, &ctx2);
+  intVals[1] = integrals[1];
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+2, &ctx3);
+  intVals[2] = integrals[2];
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+3, &ctx4);
+  intVals[3] = integrals[3];
+  *normConst = 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);
+
+
+  ierr = PetscLogFlops(4);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+  /*
+  for(int i=0; i<4; ++i) {
+    //printf("integrals[i] = %8.8e\n", i, integrals[i]);
+    if(err[i])
+      printf("Integral %d failed in calcNormalization\n", i);
+  }
+
+  //The basic elliptic integrals Romain (53)
+  //He has an error in the equation, the prefactor should be h/2
+  //structs containing function info
+  FuncInfo3 ctx20 = { .e = e, .numeratorType = 0, .denomSign = -1 };
+  FuncInfo3 ctx21 = { .e = e, .numeratorType = 1, .denomSign = -1 };
+  FuncInfo3 ctx30 = { .e = e, .numeratorType = 0, .denomSign = 1 };
+  FuncInfo3 ctx31 = { .e = e, .numeratorType = 1, .denomSign = 1 };
+  double integrals2[4];
+
+  mpfr_t *endpt = &(e->endpt);
+  mpfr_set(*endpt, e->hp_k2, MPFR_RNDN);
+  mpfr_div(*endpt, *endpt, e->hp_h2, MPFR_RNDN);
+  mpfr_d_sub(*endpt, 1.0, *endpt, MPFR_RNDN);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2, &ctx20);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *endpt, 14, integrals2+1, &ctx21);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+2, &ctx30);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction2, e, *mpfrzero, *mpfrone, 14, integrals2+3, &ctx31);
+
+  //Multiply by prefactor h/2
+  for(int i=0; i<4; ++i) {
+    //integrals2[i] = .5*h*integrals2[i];
+  }
+
+
+  for(int i=0; i<4; ++i) {
+    if(err[i])
+      printf("Integral2 %d failed in calcNormalization\n", i);
+  }
+  
+  //Solve system for coefficients
+  double *M = (double*) malloc(sizeof(double)*4);
+  M[0] = integrals2[0]; //integrals2[0]; //transposed for lapack
+  M[1] = integrals2[2]; //
+  M[2] = integrals2[1]; //
+  M[3] = integrals2[3]; //
+
+  double *sol = (double*) malloc(sizeof(double)*2);
+  sol[0] = integrals[0];
+  sol[1] = integrals[2];
+
+  //variables to store solutions
+  double alpha, beta, A, B;
+
+  char tchar = 'N';
+  int two = 2;
+  int one = 1;
+
+  //ipiv pivot (output for dgetrf, input for dgetrs)
+  int *ipiv = (int*) malloc(sizeof(int)*2);
+  int info;
+
+  //first solve
+  dgetrf_(&two, &two, M, &two, ipiv, &info);
+  dgetrs_(&tchar, &two, &one, M, &two, ipiv, sol, &two, &info);
+  alpha = sol[0];
+  beta  = sol[1];
+
+  sol[0] = integrals[1];
+  sol[1] = integrals[3];
+
+  //second solve
+  dgetrs_(&tchar, &two, &one, M, &two, ipiv, sol, &two, &info);
+  A = sol[0];
+  B = sol[1];
+  free(sol);
+  free(M);
+  free(ipiv);
+  //Romain (54)
+  //The factor 8 is from Dassios (see discussion in Deng), since we integrate over the whole ellipsoid rather than just one octant
+  if(fabs(alpha*B - beta*A) == 0) {
+    printf("\n\nbad\n\n\n\n");
+    printf("alpha*B: %16.16e\n", alpha*B);
+    printf("beta*A: %16.16e\n", beta*A);
+    return 8 * (PETSC_PI/2.0)*1e-14;
+  }
+  return 8 * (PETSC_PI/2.0)*(alpha*B - beta*A);
+  */
+}
+
 //calculate the eigenvalues of the surface operator
 #undef __FUNCT__
 #define __FUNCT__ "calcSurfaceOperatorEigenvalues"

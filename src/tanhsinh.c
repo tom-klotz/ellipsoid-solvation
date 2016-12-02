@@ -551,7 +551,7 @@ PetscErrorCode DEQuad(PetscErrorCode (*f)(mpfr_t*,mpfr_t*,void*), mpfr_t a, mpfr
   
   /* determine right step size */
   ierr = FindStepSize(prec, nSide, &h); // not including in flop count
-  printf("DE step size: %15.15f\n", mpfr_get_d(h, MPFR_RNDN));
+  //printf("DE step size: %15.15f\n", mpfr_get_d(h, MPFR_RNDN));
   //mpfr_set_d(h, 0.04, MPFR_RNDN);  
 
 
