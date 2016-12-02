@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import Ellipse
 
-WP = loadtxt('out/normWorkPrec.txt', skiprows=1)
-WP2 = loadtxt('out/normWorkPrecSE.txt', skiprows=1)
-WP3 = loadtxt('out/normWorkPrecERF.txt', skiprows=1)
+WP = loadtxt('outperm/normWorkPrec.txt', skiprows=1)
+WP2 = loadtxt('outperm/normWorkPrecSE.txt', skiprows=1)
+WP3 = loadtxt('outperm/normWorkPrecERF.txt', skiprows=1)
 
 fig1 = plt.figure(0)
 fig1.set_size_inches(7,5, forward=True)
