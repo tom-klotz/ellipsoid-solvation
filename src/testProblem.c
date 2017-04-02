@@ -234,6 +234,8 @@ PetscErrorCode RunArg()
     printf("freeEnergy[%d] = %15.15f\n", i, freeEnergy*.5*cf);
   }
 
+  printf("\n");
+  printf("Free energy: %15.15f\n", freeEnergy*.5*cf);
   
   free(xyz);
   free(chargeValues);
