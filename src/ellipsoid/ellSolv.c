@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <mpfr.h>
+#include <petsc.h>
 #include "ellipsoid.h"
 #include "../sphere/sphere.h"
 #include "ellSolv.h"
@@ -17,9 +18,10 @@ double calcEnp(EllipsoidalSystem *e, Point *point, int n, int p) {
     signm = -1;
   if(point->x3 < 0)
     signn = -1;
-  double eL = calcLame(e, n, p, point->x1, signm, signn);
-  double eM = calcLame(e, n, p, point->x2, signm, signn);
-  double eN = calcLame(e, n, p, point->x3, signm, signn);
+  double eL, eM, eN;
+  calcLame(e, n, p, point->x1, signm, signn, &eL);
+  calcLame(e, n, p, point->x2, signm, signn, &eM);
+  calcLame(e, n, p, point->x3, signm, signn, &eN);
 
   return eL*eM*eN;
 }
@@ -29,7 +31,8 @@ double calcGnp(EllipsoidalSystem *e, Point *positions, double *charges, int nCha
   clock_t start, diff;
   int msec;
   start = clock();
-  double normConstant = calcNormalization(e, n, p);
+  double normConstant;
+  calcNormalization(e, n, p, &normConstant);
   diff = clock() - start;
   msec = diff * 1000 / CLOCKS_PER_SEC;
   //printf("normConstant took %d seconds and %d milliseconds\n", msec/1000, msec%1000);
@@ -41,12 +44,10 @@ double calcGnp(EllipsoidalSystem *e, Point *positions, double *charges, int nCha
 
     Enp = calcEnp(e, positions+k, n, p);
 
-
-
     sum += charges[k] * Enp;
   }
 
-  sum *= (4*M_PI)/((2.0*n+1.0)*normConstant);
+  sum *= (4*PETSC_PI)/((2.0*n+1.0)*normConstant);
 
   return sum;
 }
@@ -62,7 +63,8 @@ double calcFnp(EllipsoidalSystem *e, Point *point, int n, int p)
     signn = -1;
 
   double enpval = calcEnp(e, point, n, p);
-  double ival   = calcI(e, n, p, point->x1, signm, signn);
+  double ival;
+  calcI(e, n, p, point->x1, signm, signn, &ival);
   //printf("ENP: %15.15f\nI: %15.15f\n", enpval, ival);
   return (2*n + 1) * enpval * ival;
 }
@@ -71,11 +73,15 @@ double calcFnp(EllipsoidalSystem *e, Point *point, int n, int p)
 void calcBnpAndCnpFromGnp(Problem *problem, int n, int p, double Gnp, double *Bnp, double *Cnp)
 {
   EllipsoidalSystem *e = problem->e;
-  double Ea = calcLame(e, n, p, e->a, 1, 1);
-  double Ia = calcI(problem->e, n, p, e->a, 1, 1);
+  double Ea;
+  calcLame(e, n, p, e->a, 1, 1, &Ea);
+  double Ia;
+  calcI(problem->e, n, p, e->a, 1, 1, &Ia);
   double Fa = (2*n + 1) * Ea * Ia;
-  double EaDer = calcLameDerivative(e, n, p, e->a, 1, 1);
-  double IaDer = calcIDerivative(e, n, p, e->a, 1, 1);
+  double EaDer;
+  calcLameDerivative(e, n, p, e->a, 1, 1, &EaDer);
+  double IaDer;
+  calcIDerivative(e, n, p, e->a, 1, 1, &IaDer);
   double FaDer = (2*n+1) * (Ea*IaDer + EaDer*Ia); //chain rule?
   double e1 = problem->e1;
   double e2 = problem->e2;
@@ -84,7 +90,7 @@ void calcBnpAndCnpFromGnp(Problem *problem, int n, int p, double Gnp, double *Bn
   double first = (Fa/Ea)*(e1 - e2)/(e1*e2);
   first /= (1-(e1/e2)*((EaDer*Fa)/(FaDer*Ea)));
   *Bnp = first*Gnp;
-  
+
   //calc Cnp
   first = (e1/e2)*(EaDer/FaDer)*(*Bnp);
   first += (Gnp/e2);
@@ -142,11 +148,13 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
     solution[i] = 0;
   int count = 0;
   double *fnpvals = (double*) malloc(sizeof(double)*nPoints);
+
   for(int n=0; n<=maxDeg; ++n) {
+
     for(int p=0; p < 2*n+1; ++p) {
       Gnp = calcGnp(problem->e, problem->positions, problem->charges, problem->nCharges, n, p);
       calcBnpAndCnpFromGnp(problem, n, p, Gnp, &Bnp, &Cnp);
-     
+
       for(int k=0; k<nPoints; ++k) {
 	//if on exterior
 	if(fabs(r[k].x1) >= e->a) {
@@ -156,6 +164,13 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
 	else {
 	  Enp = calcEnp(problem->e, r+k, n, p);
 	  solution[k] += Bnp*Enp;
+	  if(n==3 && p==2) {
+	    printf("do we get here2\n");
+	    printf("(%d,%d)\n", n, p);
+	    printf("Enp: %15.15f\n", Enp);
+	    printf("Bnp: %15.15f\n", Bnp);
+	    printf("\n");
+	  }
 	}
       }
 
@@ -163,11 +178,12 @@ double calcCoulombEllipsoidalGrid(Problem *problem, int maxDeg, Point *r, int nP
 
       count++;
     }
-    printf("n: %d\n", n);
-    printf("Gnp: %16.16f\n", Gnp);
-    printf("Fnp: %16.16f\n", Fnp);
-    printf("enp: %16.16f\n", Enp);
-    printf("sum: %16.16f\n", solution[0]);
+    //printf("n: %d\n", n);
+    //printf("Gnp: %16.16f\n", Gnp);
+    //printf("Cnp: %16.16f\n", Cnp);
+    //printf("Fnp: %16.16f\n", Fnp);
+    //printf("enp: %16.16f\n", Enp);
+    //printf("sum: %16.16f\n", solution[0]);
     
   }
   //fclose(fp);

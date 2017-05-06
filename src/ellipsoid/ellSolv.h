@@ -2,13 +2,6 @@
 #define __ellSolv
 
 
-//spherical
-
-
-
-
-
-//ellipsoidal
 typedef struct Problem {
   Point *positions;
   double *charges;
@@ -18,6 +11,16 @@ typedef struct Problem {
   double e2; //permitivity outside
   EllipsoidalSystem *e;
 } Problem;
+
+PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal, PetscReal, PetscReal, PetscReal, PetscReal, PetscInt, Vec, Vec, PetscInt, Vec, PetscInt, Vec);
+PetscErrorCode CalcSolidInteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
+PetscErrorCode CalcSolidInteriorHarmonicVec(EllipsoidalSystem*, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcCoulombEllCoefs(EllipsoidalSystem*, PetscInt, Vec, Vec, PetscInt, Vec*);
+PetscErrorCode CalcSolidExteriorHarmonic(EllipsoidalSystem*, PetscReal, PetscReal, PetscReal, PetscInt, PetscInt, PetscReal*);
+PetscErrorCode CalcSolidExteriorHarmonicVec(EllipsoidalSystem*, Vec, PetscInt, PetscInt, Vec);
+PetscErrorCode CalcReactAndExtCoefsFromCoulomb(EllipsoidalSystem*, PetscReal, PetscReal, PetscInt, Vec, Vec, Vec);
+PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscInt nTar, Vec tarXYZ, PetscInt Nmax, Vec tarSol);
+PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, PetscReal eps2, PetscInt nSrc, Vec srcXYZ, Vec srcMag, PetscReal tol, PetscInt Nmax, Vec tarSol, PetscReal *freeE);
 
 double calcEnp(EllipsoidalSystem*, Point*, int, int);
 double calcGnp(EllipsoidalSystem*, Point*, double*, int, int, int);

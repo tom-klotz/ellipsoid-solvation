@@ -1,13 +1,11 @@
 #include <math.h>
 #include <stdio.h>
-#include <gmp.h>
 #include <mpfr.h>
+#include <petsc.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "ellipsoid/ellipsoid.h"
-
-
 
 int testCoordinateTransform()
 {
@@ -172,11 +170,11 @@ int testI()
       Isize++;
     }
   }
-  double *I = (double*) malloc(sizeof(double)*Isize);
+  double *Ival = (double*) malloc(sizeof(double)*Isize);
   int i=0;
   for(int n=0; n < nmax+1; ++n) {
     for(int p=0; p < 2*n+1; ++p) {
-      I[i] = calcI(&e, n, p, l, 1, 1);
+      calcI(&e, n, p, l, 1, 1, Ival+i); //Ival[i] = calcI(&e, n, p, l, 1, 1);
       i++;
     }
   }
@@ -185,45 +183,45 @@ int testI()
   double analyticalSumTest1 = 1.0/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
   double numericalSumTest1 = 0;
   for(int k=1; k<4; ++k) {
-    numericalSumTest1 += I[k];
+    numericalSumTest1 += Ival[k];
   }
   errors[ecount] = fabs(analyticalSumTest1 - numericalSumTest1); ecount++;
   
   //Dassios D8: their alpha1 = our a, their alpha2 = our b, their alpha3 = our c
-  double analyticalSumTest2 = I[0] - (l*l - a*a)/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
-  double numericalSumTest2 = a*a*I[1] + b*b*I[2] + c*c*I[3];
+  double analyticalSumTest2 = Ival[0] - (l*l - a*a)/(l*sqrt(l*l - h*h)*sqrt(l*l - k*k));
+  double numericalSumTest2 = a*a*Ival[1] + b*b*Ival[2] + c*c*Ival[3];
   errors[ecount] = fabs(analyticalSumTest2 - numericalSumTest2); ecount++;
   //Dassios D9: their Lambda = our DassiosLambda, their LambdaPrime = our DassiosLambdaPrime
-  double analyticalSumTest3 = 1.0/(2.0*(DassiosLambda - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(I[1]/(DassiosLambda - a*a) + I[2]/(DassiosLambda - b*b) + I[3]/(DassiosLambda - c*c));
-  double numericalSumTest3 = I[4];
+  double analyticalSumTest3 = 1.0/(2.0*(DassiosLambda - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(Ival[1]/(DassiosLambda - a*a) + Ival[2]/(DassiosLambda - b*b) + Ival[3]/(DassiosLambda - c*c));
+  double numericalSumTest3 = Ival[4];
   errors[ecount] = fabs(analyticalSumTest3 - numericalSumTest3); ecount++;
   //Dassios D10: their Lambda = our DassiosLambda, their LambdaPrime = our DassiosLambdaPrime
-  double analyticalSumTest4 = 1.0/(2.0*(DassiosLambdaPrime - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(I[1]/(DassiosLambdaPrime - a*a) + I[2]/(DassiosLambdaPrime - b*b) + I[3]/(DassiosLambdaPrime - c*c));
-  double numericalSumTest4 = I[5];
+  double analyticalSumTest4 = 1.0/(2.0*(DassiosLambdaPrime - a*a + l*l)*l*sqrt(l*l - h*h)*sqrt(l*l - k*k)) - (1.0/2.0)*(Ival[1]/(DassiosLambdaPrime - a*a) + Ival[2]/(DassiosLambdaPrime - b*b) + Ival[3]/(DassiosLambdaPrime - c*c));
+  double numericalSumTest4 = Ival[5];
   errors[ecount] = fabs(analyticalSumTest4 - numericalSumTest4); ecount++;
   //Dassios D11: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest5 = (1.0/(h*h)) * (I[2] - I[1]);
-  double numericalSumTest5 = I[6];
+  double analyticalSumTest5 = (1.0/(h*h)) * (Ival[2] - Ival[1]);
+  double numericalSumTest5 = Ival[6];
   errors[ecount] = fabs(analyticalSumTest5 - numericalSumTest5); ecount++;
   //Dassios D12: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest6 = (1.0/(k*k)) * (I[3] - I[1]);
-  double numericalSumTest6 = I[7];
+  double analyticalSumTest6 = (1.0/(k*k)) * (Ival[3] - Ival[1]);
+  double numericalSumTest6 = Ival[7];
   errors[ecount] = fabs(analyticalSumTest6 - numericalSumTest6); ecount++;
   //Dassios D13: their h1*h1 = our (b*b - c*c)
-  double analyticalSumTest7 = (1.0/(b*b - c*c)) * (I[3] - I[2]);
-  double numericalSumTest7 = I[8];
+  double analyticalSumTest7 = (1.0/(b*b - c*c)) * (Ival[3] - Ival[2]);
+  double numericalSumTest7 = Ival[8];
   errors[ecount] = fabs(analyticalSumTest7 - numericalSumTest7); ecount++;
   
   //checking errors
   for(int i=0; i < 18; ++i) {
     if(errors[i] > tol) {
       printf("Dassios D%d failed with error %8.8e\n", derror[i], errors[i]);
-      free(I);
+      free(Ival);
       return 0;
     }
   }
   
-  free(I);
+  free(Ival);
   return 1;
 }
 
@@ -244,21 +242,22 @@ int testNormalization()
   double hx = sqrt(b*b - c*c);
   double hy = e.k;
   double hz = e.h;
-  double analytic[9] = { 4*M_PI,
-			 4*M_PI/3 * hy*hy*hz*hz,
-			 4*M_PI/3 * hx*hx*hz*hz,
-			 4*M_PI/3 * hx*hx*hy*hy,
-			 -8*M_PI/5 * (LambdaD - LambdaDprime)*(LambdaD - a*a)*(LambdaD - b*b)*(LambdaD - c*c),
-			 8*M_PI/5 * (LambdaD - LambdaDprime)*(LambdaDprime - a*a)*(LambdaDprime - b*b)*(LambdaDprime - c*c),
-			 4*M_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
-			 4*M_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
-			 4*M_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
-  double value, error;
+  double analytic[9] = { 4*PETSC_PI,
+			 4*PETSC_PI/3 * hy*hy*hz*hz,
+			 4*PETSC_PI/3 * hx*hx*hz*hz,
+			 4*PETSC_PI/3 * hx*hx*hy*hy,
+			 -8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaD - a*a)*(LambdaD - b*b)*(LambdaD - c*c),
+			 8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaDprime - a*a)*(LambdaDprime - b*b)*(LambdaDprime - c*c),
+			 4*PETSC_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
+			 4*PETSC_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
+			 4*PETSC_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
+  double value, estimate, error;
   int counter = 0;
   for(int n=0; n<3; ++n) {
     for(int p=0; p<2*n+1; ++p) {
       value = analytic[counter];
-      error = calcNormalization(&e, n, p) - value;
+      calcNormalization(&e, n, p, &estimate);
+      error = estimate - value;
       if(fabs(error) > tol) {
 	printf("testnormalization failed iteration %d at (n,p) = (%d,%d) with error %8.8e\n", counter, n, p, fabs(error));
 	return 0;
@@ -324,19 +323,19 @@ int testSurfaceOperatorEigenvalues()
 
   //Integrals are from Ritter, need to transform integrals to finite interval
   FuncInfo4 ctx = { &e, a*a, b*b, c*c, a*a };
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[0] = (a*b*c * integral - 1.0)/2.0;
   ctx.botVar = b*b;
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[1] = (a*b*c * integral - 1.0)/2.0;
   ctx.botVar = c*c;
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
   analytic[2] = (a*b*c * integral - 1.0)/2.0;
 
 
   double *ev = (double*) malloc(sizeof(double)*(3));
   for(int p=0; p < 3; ++p)
-    ev[p] = calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1);
+    calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1, ev+p); //ev[p] = calcSurfaceOperatorEigenvalues(&e, n, p, l, 1, 1);
   for(int p=0; p < 3; ++p) {
     if(fabs(ev[p] - analytic[p]) > tol) {
       printf("analytic (%8.8e) doesn't match numerical (%8.8e), error = (%8.8e) for integral %d\n", analytic[p], ev[p], fabs(ev[p] - analytic[p]), p+1);
@@ -371,8 +370,8 @@ int compareIntegration()
 
   double integralMPFR, integralMidpoint;
 
-  integrateMPFR((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
-  integrateMidpoint((void (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
+  integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
+  integrateMidpoint((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
 
   printf("ze MPFR integral is: %15.15f\n", integralMPFR);
   printf("ze Midpoint integral is: %15.15f\n", integralMidpoint);

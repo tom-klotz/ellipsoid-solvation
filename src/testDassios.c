@@ -1,8 +1,8 @@
 #include <math.h>
+#include <petsc.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <gmp.h>
 #include <mpfr.h>
 #include "ellipsoid/ellipsoid.h"
 
@@ -13,6 +13,8 @@ int main() {
   int n = 6;
   //double *coefs = (double*) malloc(sizeof(double)*(n/2+1));
   //printf("the value is: %15.15f\n", calcLame2(&e, 3, 1, .5));
-  printf("the value is: %15.15f\n", calcLame (&e, 1, 2, 2.1, 1, 1));
+  double val;
+  calcLame (&e, 1, 2, 2.1, 1, 1, &val);
+  printf("the value is: %15.15f\n", val);
   //printf("the value is: %15.15f\n", calcLame2(&e, 3, 1, 2.1));
 }

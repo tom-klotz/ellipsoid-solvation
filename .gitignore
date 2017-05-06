@@ -4,6 +4,10 @@
 *.obj
 *.elf
 
+# osx
+.DS_Store
+
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -33,6 +37,10 @@ ellSolv
 # Debug files
 *.dSYM/
 *.su
+
+# Junk
+*.txt
+*.eps
 
 # Emacs
 *~

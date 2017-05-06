@@ -94,32 +94,53 @@ typedef struct FuncInfo4 {
 } FuncInfo4;
 
 
+//petsc functions
+PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem*, Vec, Vec);
+PetscErrorCode ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
+PetscErrorCode getCoefsK(EllipsoidalSystem *s, int n, double **coefs);
+PetscErrorCode calcLame2(EllipsoidalSystem *s, int n, int p, double l, double *sol);
+PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
+PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
+PetscErrorCode calcLame(struct EllipsoidalSystem *s, int n, int p, double l, int signm, int signn, double *Enp);
+PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx);
+PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
+PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *normConst);
+PetscErrorCode calcNormalization2(EllipsoidalSystem *e, PetscInt n, PetscInt p, double *intVals, double *normConst);
+PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx);
+PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *Ideriv);
+//PetscErrorCode integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
+PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
+PetscErrorCode integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
+PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
+PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
+PetscErrorCode getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size, double **mat);
+
 //functions
-void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
-void initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
+//void initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
+//void initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
 void ellipsoidInitToOrderN(struct EllipsoidalSystem *s, int N);
-void getCoefsK(EllipsoidalSystem *s, int n, double **coefs);
+//void getCoefsK(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsL(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsM(EllipsoidalSystem *s, int n, double **coefs);
 void getCoefsN(EllipsoidalSystem *s, int n, double **coefs);
-double calcLame2(EllipsoidalSystem *s, int n, int p, double l);
-void ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
+//double calcLame2(EllipsoidalSystem *s, int n, int p, double l);
+//void ellipsoidToCartesian(struct EllipsoidalSystem *s, struct Point *p);
 void cartesianToEllipsoidal(struct EllipsoidalSystem *s, struct Point *p);
 void cartesianToEllipsoidal2(struct EllipsoidalSystem *e, struct Point *p);
 char getLameTypeT(int n, int p);
 int getLameTypeTp(int n, int p);
-double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size);
+//double *getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size);
 double *computeLameCoefficients(struct EllipsoidalSystem *s, int n, int p, int *vecsize);
-double calcLame(struct EllipsoidalSystem *s, int n, int p, double l, int signm, int signn);
-double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
-void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx);
-void normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx);
+//double calcLame(struct EllipsoidalSystem *s, int n, int p, double l, int signm, int signn);
+//double calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
+//void integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx);
+//void normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx);
 void normFunction2(mpfr_t *x, mpfr_t *val, FuncInfo3 *ctx);
-double calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
-double calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
-double calcNormalization(EllipsoidalSystem *e, int n, int p);
-double calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
-int integrate(void (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
-int integrateMPFR(void (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
-int integrateMidpoint(void (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
+//double calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
+//double calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
+//double calcNormalization(EllipsoidalSystem *e, int n, int p);
+//double calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn);
+//int integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
+//int integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
+//int integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
 #endif
