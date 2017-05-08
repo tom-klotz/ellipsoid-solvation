@@ -574,8 +574,10 @@ PetscErrorCode CartesianToEllipsoidalVec(EllipsoidalSystem *e, Vec xyzP, Vec ell
 			    cos((th+2.0*PETSC_PI)/3.0) };
     
     val3 = 2*sqrt(Q)*lam[2] - a1/3.0;
-    if(val3 < 0 && fabs(val3) < 1e-10)
+    if(val3 < 0 && fabs(val3) < 1e-10) {
+      printf("WOOOOW\n\n");
       val3 = 0;
+    }
     else if(val3 < 0) {
       printf("\n\nTHERE WAS AN ISSUE WITH THE TRANSFORM and we got %8.8e\n\n", 2*sqrt(Q)*lam[2] -a1/3.0);
       val3 = 0;

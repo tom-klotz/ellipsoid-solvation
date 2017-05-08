@@ -230,6 +230,69 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
   PetscFunctionReturn(0);
 }
 
+
+
+#undef __FUNCT__
+#define __FUNCT__ "CalcEllipsoidCoulombPotential"
+PetscErrorCode CalcEllipsoidCoulombPotential(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nCharges, Vec chargeXYZ, Vec chargeMag, PetscInt nSol, Vec solXYZ, PetscInt Nmax, Vec targetSol)
+{
+  PetscErrorCode ierr;
+  Vec chargeEll;
+  Vec solEll;
+  Vec coulCoefs;
+  Vec FnpVals;
+  EllipsoidalSystem e;
+  PetscScalar *vecPtr;
+  PetscScalar *coulCoefsArray;
+  PetscScalar *FnpValsArray;
+  PetscFunctionBegin;
+
+  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+
+  // create charge ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nCharges, &chargeEll);CHKERRQ(ierr);
+  printf("Converting charge points to ellipsoidal\n");
+  ierr = CartesianToEllipsoidalVec(&e, chargeXYZ, chargeEll);CHKERRQ(ierr);
+  // create solution ellipsoidal vec and convert from xyz
+  ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nSol, &solEll);CHKERRQ(ierr);
+  printf("Converting solution points to ellipsoidal\n");
+  ierr = CartesianToEllipsoidalVec(&e, solXYZ, solEll);CHKERRQ(ierr);
+
+  //calculate coulomb coefficients
+  ierr = CalcCoulombEllCoefs(&e, nCharges, chargeEll, chargeMag, Nmax, &coulCoefs);CHKERRQ(ierr);
+
+  //initialize vector for interior harmonic calculations
+  ierr = VecCreateSeq(PETSC_COMM_SELF, nSol, &FnpVals);CHKERRQ(ierr);
+
+  ierr = VecGetArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
+  ierr = VecGetArray(targetSol, &vecPtr);CHKERRQ(ierr);
+  PetscInt index = 0;
+  for(PetscInt n=0; n<=Nmax; ++n) {
+    for(PetscInt p=0; p < 2*n+1; ++p) {
+      //calculate Enp Vals
+      ierr = CalcSolidExteriorHarmonicVec(&e, solEll, n, p, FnpVals);CHKERRQ(ierr);
+      ierr = VecGetArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      for(PetscInt k=0; k<nSol; ++k) {
+	vecPtr[k] += coulCoefsArray[index]*FnpValsArray[k];
+      }
+      ierr = VecRestoreArrayRead(FnpVals, &FnpValsArray);CHKERRQ(ierr);
+      index++;
+    }
+  }
+  ierr = VecRestoreArray(targetSol, &vecPtr);CHKERRQ(ierr);
+  ierr = VecRestoreArrayRead(coulCoefs, &coulCoefsArray);CHKERRQ(ierr);
+
+
+  ierr = VecDestroy(&solEll);CHKERRQ(ierr);
+  ierr = VecDestroy(&chargeEll);CHKERRQ(ierr);
+  ierr = VecDestroy(&coulCoefs);CHKERRQ(ierr);
+  ierr = VecDestroy(&FnpVals);CHKERRQ(ierr);
+  PetscFunctionReturn(0);
+}
+
+
+
+
 #undef __FUNCT__
 #define __FUNCT__ "CalcEllipsoidSolvationPotential"
 PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscReal c, PetscReal eps1, PetscReal eps2, PetscInt nSource, Vec sourceXYZ, Vec sourceMag, PetscInt nTarget, Vec targetXYZ, PetscInt Nmax, Vec targetSol)
@@ -257,7 +320,7 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   PetscFunctionBegin;
 
   
-  initEllipsoidalSystem(&e, a, b, c);
+  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
 
   // calculate the number of interior and exterior points
   ierr = VecGetArrayRead(targetXYZ, &targetXYZArray);CHKERRQ(ierr);
