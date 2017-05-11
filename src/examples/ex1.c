@@ -37,7 +37,7 @@ PetscErrorCode main(int argc, char **argv)
   Vec chargeXYZ;
   Vec chargeMag;
   //maximum expansion order for test
-  const PetscInt MAX_N = 15;
+  const PetscInt MAX_N = 18;
   //solutions vector
   const PetscInt NUM_SOL_PTS = 2;
   Vec ellSolutions[MAX_N], sphSolutions[MAX_N];
@@ -53,7 +53,7 @@ PetscErrorCode main(int argc, char **argv)
   PetscReal sol2Y = 2.6;
   PetscReal sol2Z = 1;
   //pointer for accessing petsc vectors
-  PetscScalar *vecPt;
+  PetscScalar *vecPt, *vecPt2;
   PetscFunctionBeginUser;
 
   //initialize petsc
@@ -121,10 +121,16 @@ PetscErrorCode main(int argc, char **argv)
     ierr = VecAbs(sphError[k]);CHKERRQ(ierr);
   }
 
+  FILE *fp = fopen("out/ex1.txt", "w");
+  
+  
   for(PetscInt k=0; k<MAX_N; ++k) {
     ierr = VecGetArrayRead(ellError[k], &vecPt);
+    ierr = VecGetArrayRead(sphError[k], &vecPt2);
     printf("Error[%d] = %4.4e\n", k, vecPt[0]);
+    fprintf(fp, "%4.4e %4.4e %4.4e %4.4e\n", vecPt[0], vecPt2[0], vecPt[1], vecPt2[1]);
     ierr = VecRestoreArrayRead(ellError[k], &vecPt);
+    ierr = VecRestoreArrayRead(sphError[k], &vecPt2);
   }
   printf("Exact: \n");
   ierr = VecView(exactSolution, PETSC_VIEWER_STDOUT_SELF);

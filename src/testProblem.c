@@ -38,16 +38,17 @@ PetscErrorCode EllVsSphConvergence()
   Vec chargeXYZ;
   Vec chargeMag;
   //maximum expansion order for test
-  const PetscInt MAX_N = 10;
+  const PetscInt MAX_N = 20;
   //solutions vector
   const PetscInt NUM_SOL_PTS = 2;
   Vec ellSolutions[MAX_N], sphSolutions[MAX_N];
+  Vec ellError[MAX_N], sphError[MAX_N];
   Vec exactSolution;
   Vec solXYZ;
   //solution point inside of sphere
-  PetscReal sol1X = 1.5;
-  PetscReal sol1Y = 0;
-  PetscReal sol1Z = 0;
+  PetscReal sol1X = .1;
+  PetscReal sol1Y = .1;
+  PetscReal sol1Z = 1.5;
   //solution point outside of sphere
   PetscReal sol2X = 2.1;
   PetscReal sol2Y = 2.6;
@@ -89,10 +90,12 @@ PetscErrorCode EllVsSphConvergence()
   ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOL_PTS, &exactSolution);CHKERRQ(ierr);
   ierr = CoulombExact(eps1, chargeXYZ, chargeMag, solXYZ, exactSolution);CHKERRQ(ierr);
 
-  //initialize solutions vectors
+  //initialize solutions and error vectors
   for(PetscInt k=0; k<MAX_N; ++k) {
     ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOL_PTS, ellSolutions+k);CHKERRQ(ierr);
     ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOL_PTS, sphSolutions+k);CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOL_PTS, ellError+k);CHKERRQ(ierr);
+    ierr = VecCreateSeq(PETSC_COMM_SELF, NUM_SOL_PTS, sphError+k);CHKERRQ(ierr);
   }
 
   //compute solutions for expansions up to order MAX_N
@@ -104,17 +107,26 @@ PetscErrorCode EllVsSphConvergence()
     ierr = CalcSphericalCoulombPotential(1.0, eps1, eps2, SQRT_NUM_CHARGES*SQRT_NUM_CHARGES, chargeXYZ, chargeMag, NUM_SOL_PTS, solXYZ, k, sphSolutions[k-1]);CHKERRQ(ierr);
   }
 
-  printf("\n\nELLIPSOIDAL SOLUTIONS\n\n");
-  for(PetscInt k=1; k<=MAX_N; ++k) {
-    printf("N = %d\n", k);
-    ierr = VecView(ellSolutions[k-1], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+  //compute errors
+  printf("Computing errors...\n");
+  for(PetscInt k=0; k<MAX_N; ++k) {
+    ierr = VecCopy(exactSolution, ellError[k]);CHKERRQ(ierr);
+    ierr = VecCopy(exactSolution, sphError[k]);CHKERRQ(ierr);
+    ierr = VecAXPY(ellError[k], -1.0, ellSolutions[k]);CHKERRQ(ierr);
+    ierr = VecAXPY(sphError[k], -1.0, sphSolutions[k]);CHKERRQ(ierr);
+    ierr = VecAbs(ellError[k]);CHKERRQ(ierr);
+    ierr = VecAbs(sphError[k]);CHKERRQ(ierr);
   }
 
-  printf("\n\nSPHERICAL SOLUTIONS\n\n");
-  for(PetscInt k=1; k<=MAX_N; ++k) {
-    printf("N = %d\n", k);
-    ierr = VecView(sphSolutions[k-1], PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
+  for(PetscInt k=0; k<MAX_N; ++k) {
+    ierr = VecGetArrayRead(ellError[k], &vecPt);
+    printf("Error[%d] = %4.4e\n", k, vecPt[0]);
+    ierr = VecRestoreArrayRead(ellError[k], &vecPt);
   }
+  printf("Exact: \n");
+  ierr = VecView(exactSolution, PETSC_VIEWER_STDOUT_SELF);
+  printf("Ell: \n");
+  ierr = VecView(ellSolutions[MAX_N-1], PETSC_VIEWER_STDOUT_SELF);
   
   PetscFunctionReturn(0);
 }
