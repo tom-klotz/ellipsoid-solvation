@@ -789,6 +789,245 @@ void getLameCoefficientMatrix2(struct EllipsoidalSystem *s, char t, int n, int *
   //return vr;
 }
 
+/*
+#undef __FUNCT__
+#define __FUNCT__ "MatVecMult"
+PetscErrorCode MatVecMult(PetscInt m, PetscInt n, double **mat, double *vec)
+{
+  PetscErrorCode ierr;
+
+  PetscFunctionBegin;
+
+  for(PetscInt i=0; i<m; ++i) {
+    for(PetscInt j=0; j<n; ++j) {
+      *mat[i*n+j] = 
+
+    }
+  }
+
+  PetscFunctionReturn(0);
+}
+*/
+
+#undef __FUNCT__
+#define __FUNCT__ "getLameCoefficientMatrixSymmetric"
+PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, char t, int n, int* const mat_size, double **mat)
+{
+  PetscErrorCode ierr;
+  PetscInt flopCount;
+  PetscFunctionBegin;
+  flopCount = 0;
+  
+  //For a given Lame type and ordr n, return the tridiagonal matrix
+  //the size of the generated coefficient matrix is stored to mat_size
+  //The eigenvectors of this matrix give the coefficients for the polynomaial P in the Lame function definition
+  //The expressions come from Romain Annex 3
+  //OPT: We could memorize this
+  double alpha = s->h2;
+  double beta = s->k2 - s->h2;
+  double gamma = alpha - beta; flopCount += 2;
+  int r = n/2;
+  int size_d;
+  double *d, *g, *f, *sigma;
+  if(t == 'K') {
+    size_d = r+1;
+  }
+  else if(t == 'L' || t == 'M') {
+    size_d = n-r;
+  }
+  else if(t == 'N') {
+    size_d = r;
+  }
+  d = (double*) malloc(sizeof(double)*size_d);
+  g = (double*) malloc(sizeof(double)*(size_d-1));
+  f = (double*) malloc(sizeof(double)*(size_d-1));
+  sigma = (double*) malloc(sizeof(double)*size_d);
+    
+  if (t == 'K') {
+    //g missing last item
+    for(int k = 0; k < r; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount++;
+    }
+    if(n%2) { //n is odd
+      for(int k=0; k < r+1; ++k) {
+	d[k] = ((2*r + 1)*(2*r + 2) - 4*k*k)*alpha + (2*k + 1)*(2*k + 1)*beta; flopCount += 6;
+      }
+      for(int k=1; k < r+1; ++k) {
+	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) + 1); flopCount += 2;
+      }
+    }
+    else { //n is even
+      for(int k=0; k < r+1; ++k) {
+	d[k] = 2*r*(2*r + 1)*alpha - 4*k*k*gamma; flopCount += 5;
+      }
+      for(int k=1; k < r+1; ++k) {
+	f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) - 1); flopCount += 2;
+      }
+    }
+  }
+  else if (t == 'L') {
+    //g missing last item
+    for(int k = 0; k < n-r-1; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
+      //printf("g[%d] = %15.15f\n", k, g[k]);
+      //printf("n, r, %d, %d\n", n, r);
+      //printf("beta: %15.15f\n", beta);
+    }
+    if(n%2) { //n is odd
+      for(int k=0; k < n-r; ++k) {
+	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 3;
+      }
+    }
+    else { //n is even
+      for(int k=0; k < n-r; ++k) {
+	d[k] = (2*r*(2*r + 1) - (2*k + 1)*(2*k + 1))*alpha + (2*k + 2)*(2*k + 2)*beta; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+      }
+    }
+  }
+  else if (t == 'M') {
+    //g missing last item
+    for(int k = 0; k < n-r-1; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount += 2;
+    }
+    if(n%2) { //n is odd
+      for(int k=0; k < n-r; ++k) {
+	d[k] = ((2*r + 1)*(2*r + 2) - (2*k + 1)*(2*k + 1))*alpha + 4*k*k*beta; flopCount += 5;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 2;
+      }
+    }
+    else { //n is even
+      for(int k=0; k < n-r; ++k) {
+	d[k] = 2*r*(2*r + 1)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < n-r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+      }
+    }
+  }
+  else if (t == 'N') {
+    //g missing last item
+    for(int k = 0; k < r-1; ++k) {
+      g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
+    }
+    if(n%2) { //n is odd
+      for(int k=0; k < r; ++k) {
+	d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 2)*(2*k + 2)*gamma; flopCount += 3;
+      }
+      for(int k=1; k < r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k +3); flopCount += 2;
+      }
+    }
+    else { //n is even
+      for(int k=0; k < r; ++k) {
+	d[k] = 2*r*(2*r + 1)*alpha - (2*k + 2)*(2*k + 2)*alpha + (2*k + 1)*(2*k + 1)*beta;
+	flopCount += 4;
+      }
+      for(int k=1; k < r; ++k) {
+	f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 3;
+      }
+    }
+  }
+
+
+  sigma[0] = 1;
+  for(PetscInt k=1; k<size_d; ++k) {
+    sigma[k] = sqrt(g[k-1]/f[k-1])*sigma[k-1];
+  }
+
+  double *M = (double*) calloc(sizeof(double), size_d*size_d);
+  //fill diagonal with d
+  for(int k=0; k < size_d; ++k)
+    M[k*size_d + k]   = d[k];
+  //fill above diagonal with g
+  for(int k=0; k < size_d-1; ++k)
+    M[(k)*size_d + k+1] = g[k];
+  //fill below diagonal with f
+  for(int k=0; k < size_d-1; ++k)
+    M[(k+1)*size_d + k] = f[k];
+    
+  //scale entries by values of sigma to get symmetric matrix
+  for(PetscInt i=0; i<size_d; ++i) {
+    for(PetscInt j=0; j<size_d; ++j) {
+      M[i*size_d+j] = M[i*size_d+j]*sigma[i]*(1./sigma[j]);
+    }
+  }
+  if(n==5) {
+    printf("\nSYMETRIC MATRIX:\n");
+    for(PetscInt i=0; i<size_d; ++i) {
+      for(PetscInt j=0; j<size_d; ++j) {
+	printf("%4.4f ", M[i*size_d+j]);
+      }
+      printf("\n");
+    }
+  }
+  
+  //transpose M for lapack
+  matTranspose(M, size_d);
+  
+
+  int lwork = 16*size_d;
+  int info;
+  double *work, *wr, *wi;
+  *mat    = (double*) malloc(sizeof(double)*size_d*size_d);
+  wr     = (double*) malloc(sizeof(double)*size_d);
+  wi     = (double*) malloc(sizeof(double)*size_d);
+  work   = (double*) malloc(sizeof(double)*lwork);
+
+  //compute eigenvalues with lapack
+  char complefteig, comprighteig;
+  complefteig = 'N'; //don't compute left eigenvectors
+  comprighteig = 'V'; //compute right eigenvectors
+  
+  /* #################################################### */
+  /* ############## NEED TO ADD FLOP COUNT HERE ######### */
+  dgeev_( &complefteig, &comprighteig, &size_d, M, &size_d, wr, wi, NULL, &size_d, *mat, &size_d, work, &lwork, &info );
+  /* #################################################### */
+  /* #################################################### */
+  
+  //matTranspose(vr, size_d);  
+  //printf("hot\n");
+  //printf("size_d: %d\n", size_d);
+  free(wr);
+  free(wi);
+  free(d);
+  free(f);
+  free(g);
+  free(work);
+  free(M);
+  //printf("amazing\n");
+  //printf("diggity\n");
+  if(mat_size != NULL)
+    *mat_size = size_d;
+  //for(int k=0; k<(m+1); ++k)
+  //b[k] = b[k]/(b[(m+1)-1]/pow(-e->h2,(m+1)-1));
+
+
+  //transform back to get eigenvectors
+  for(PetscInt i=0; i<size_d; ++i) {
+    for(PetscInt j=0; j<size_d; ++j) {
+      (*mat)[i*size_d+j] = (*mat)[i*size_d+j]*1./(sigma[j]);
+    }
+  }
+  
+  for(int i=0; i<size_d; ++i) {
+    for(int k=0; k<size_d; ++k) {
+      (*mat)[i*size_d+k] = (*mat)[i*size_d+k]/((*mat)[(i*size_d) + size_d-1]/pow(-s->h2,(size_d)-1));
+      flopCount += 3;
+    }
+  }
+  ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
+  //return vr;
+  PetscFunctionReturn(0);
+}
+
 
 #undef __FUNCT__
 #define __FUNCT__ "getLameCoefficientMatrix"
@@ -1008,16 +1247,16 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
   for(int n=0; n<=N; ++n) {
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
     //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
-    ierr = getLameCoefficientMatrix(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
+    ierr = getLameCoefficientMatrixSymmetric(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
     //printf("wowze\n");
     if(n != 0) {
       //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
-      ierr = getLameCoefficientMatrix(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrixSymmetric(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
       //e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
-      ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrixSymmetric(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
       if(n != 1) {
 	//e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
-	ierr = getLameCoefficientMatrix(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
+	ierr = getLameCoefficientMatrixSymmetric(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
       }
     }
   }

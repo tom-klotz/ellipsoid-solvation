@@ -37,7 +37,7 @@ PetscErrorCode main(int argc, char **argv)
   Vec chargeXYZ;
   Vec chargeMag;
   //maximum expansion order for test
-  const PetscInt MAX_N = 18;
+  const PetscInt MAX_N = 15;
   //solutions vector
   const PetscInt NUM_SOL_PTS = 2;
   Vec ellSolutions[MAX_N], sphSolutions[MAX_N];
