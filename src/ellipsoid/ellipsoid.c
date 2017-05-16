@@ -855,6 +855,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
     mpfr_init(d[k]);
     mpfr_init(sigma[k]);
   }
+
   if(t == 'K') {
     //g missing last item
     for(PetscInt k=0; k < r; ++k) {
@@ -865,7 +866,6 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
       mpfr_mul_d(temp1, temp1, -1.0, MPFR_RNDN);
       mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
       mpfr_set(g[k], temp1, MPFR_RNDN);
-      printf("wow!\n");
     }
     if(n%2) { //n is odd
       for(PetscInt k=0; k < r+1; ++k) {
@@ -1071,7 +1071,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
     }
   }
 
-  mpfr_set_d(sigma[0], 0.0, MPFR_RNDN);
+  mpfr_set_d(sigma[0], 1.0, MPFR_RNDN);
   for(PetscInt k=1; k<size_d; ++k) {
     mpfr_div(temp1, g[k-1], f[k-1], MPFR_RNDN);
     mpfr_sqrt(temp1, temp1, MPFR_RNDN);
@@ -1079,9 +1079,11 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
   }
 
   mpfr_t *M = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d*size_d);
-  //initialize entries
-  for(PetscInt k=0; k < size_d*size_d; ++k)
+  //initialize entries and set to 0
+  for(PetscInt k=0; k < size_d*size_d; ++k) {
     mpfr_init(M[k]);
+    mpfr_set_d(M[k], 0.0, MPFR_RNDN);
+  }
   //fill diagonal with d
   for(PetscInt k=0; k < size_d; ++k)
     mpfr_set(M[k*size_d + k], d[k], MPFR_RNDN);
@@ -1100,8 +1102,17 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
   }
 
   //FIND EIGENVECTORS
+  mpfr_t *guess, *result;
+  guess = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
+  result = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
+  for(PetscInt k=0; k < size_d; ++k) {
+    mpfr_inits(guess[k], result[k], NULL);
+    mpfr_set_d(guess[k], 0.5, MPFR_RNDN);
+  }
+  if(n==6 && t=='K') {
+    ierr = eigsMPFR(size_d, M, guess, result);CHKERRQ(ierr);
+  }
 
-  
   mpfr_clears(alpha, beta, gamma, NULL);
   PetscFunctionReturn(0);
 }
@@ -1261,7 +1272,8 @@ PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, ch
       M[i*size_d+j] = M[i*size_d+j]*sigma[i]*(1./sigma[j]);
     }
   }
-  if(n==5) {
+  /*
+    if(n==5) {
     printf("\nSYMETRIC MATRIX:\n");
     for(PetscInt i=0; i<size_d; ++i) {
       for(PetscInt j=0; j<size_d; ++j) {
@@ -1270,7 +1282,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, ch
       printf("\n");
     }
   }
-  
+  */
   //transpose M for lapack
   matTranspose(M, size_d);
   
@@ -1550,6 +1562,8 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
     //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
     ierr = getLameCoefficientMatrixSymmetric(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
+    ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'K', n, NULL, NULL);CHKERRQ(ierr);
+    //PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s, char t, PetscInt n, PetscInt* const mat_size, mpfr_t **mat)
     //printf("wowze\n");
     if(n != 0) {
       //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
