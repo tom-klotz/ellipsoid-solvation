@@ -6,7 +6,7 @@
 #include <petsc.h>
 #include <time.h>
 #include "ellipsoid.h"
-
+#include "MPFReigs.h"
 
 extern void dgeev_(char *jobvl, char *jobvr, int *N, double *A, int *lda, double *wr, double *wi, double *vl, int *ldvl, double *vr, int *ldvr, double *work, int *lwork, int *info);
 
@@ -808,6 +808,308 @@ PetscErrorCode MatVecMult(PetscInt m, PetscInt n, double **mat, double *vec)
   PetscFunctionReturn(0);
 }
 */
+
+
+
+
+
+#undef __FUNCT__
+#define __FUNCT__ "getLameCoefficientMatrixSymmetricMPFR"
+PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s, char t, PetscInt n, PetscInt* const mat_size, mpfr_t **mat)
+{
+  PetscErrorCode ierr;
+  mpfr_t alpha, beta, gamma;
+  mpfr_t *d, *g, *f, *sigma;
+  mpfr_t temp1, temp2;
+  PetscInt size_d;
+  PetscFunctionBegin;
+
+  mpfr_inits(temp1, temp2, NULL);
+  
+  //set alpha, beta, gamma
+  mpfr_inits(alpha, beta, gamma, NULL);
+  mpfr_set(alpha, s->hp_h2, MPFR_RNDN);
+  mpfr_sub(beta, s->hp_k2, s->hp_h2, MPFR_RNDN);
+  mpfr_sub(gamma, alpha, beta, MPFR_RNDN);
+
+  PetscInt r = n/2;
+  if(t=='K') {
+    size_d = r+1;
+  }
+  else if(t=='L' || t=='M') {
+    size_d = n-r;
+  }
+  else if(t=='N') {
+    size_d = r;
+  }
+  d = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
+  g = (mpfr_t*) malloc(sizeof(mpfr_t)*(size_d-1));
+  f = (mpfr_t*) malloc(sizeof(mpfr_t)*(size_d-1));
+  sigma = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
+
+  for(PetscInt k=0; k<size_d; ++k) {
+    if(k<size_d-1) {
+      mpfr_init(g[k]);
+      mpfr_init(f[k]);
+    }
+    mpfr_init(d[k]);
+    mpfr_init(sigma[k]);
+  }
+  if(t == 'K') {
+    //g missing last item
+    for(PetscInt k=0; k < r; ++k) {
+      //g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount++;
+      mpfr_set_d(temp1, 2*k+2, MPFR_RNDN);
+      mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+      mpfr_mul_d(temp1, temp1, -1.0, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+      mpfr_set(g[k], temp1, MPFR_RNDN);
+      printf("wow!\n");
+    }
+    if(n%2) { //n is odd
+      for(PetscInt k=0; k < r+1; ++k) {
+	//d[k] = ((2*r + 1)*(2*r + 2) - 4*k*k)*alpha + (2*k + 1)*(2*k + 1)*beta; flopCount += 6;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*r+2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_set_d(temp2, 4*k*k, MPFR_RNDN);
+	mpfr_sub(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(d[k], temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp1, 2*k+1, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+	mpfr_sub(d[k], d[k], temp1, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < r+1; ++k) {
+	//f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) + 1); flopCount += 2;
+	mpfr_set_d(temp1, 2*(r-k) + 2, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*(r+k) + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(f[k-1], temp2, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], f[k-1], -1.0, MPFR_RNDN);
+      }
+    }
+    else { //n is even
+      for(PetscInt k=0; k < r+1; ++k) {
+	//d[k] = 2*r*(2*r + 1)*alpha - 4*k*k*gamma; flopCount += 5;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1,  2*r, MPFR_RNDN);
+	mpfr_mul(d[k], temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp2, 4*k*k, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, gamma, MPFR_RNDN);
+	mpfr_sub(d[k], d[k], temp2, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < r+1; ++k) {
+	//f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) - 1); flopCount += 2;
+	mpfr_set_d(temp1, 2*(r-k)+2, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*(r+k)+1, MPFR_RNDN);
+	mpfr_mul(f[k-1], temp1, temp2, MPFR_RNDN);
+	mpfr_mul(f[k-1], f[k-1], alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], f[k-1], -1.0, MPFR_RNDN);
+      }
+    }
+  }
+  else if (t == 'L') {
+    //g missing last item
+    for(PetscInt k=0; k < n-r-1; ++k) {
+      //g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
+      mpfr_set_d(temp1, 2*k+2, MPFR_RNDN);
+      mpfr_set_d(temp2, 2*k+3, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+      mpfr_mul_d(g[k], temp1, -1.0, MPFR_RNDN);
+    }
+    if(n%2) { //n is odd
+      for(PetscInt k=0; k < n-1; ++k) {
+	//d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*r+2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(d[k], temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp1, 2*k+1, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, gamma, MPFR_RNDN);
+	mpfr_sub(d[k], d[k], temp1, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < n-r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 3;
+	mpfr_set_d(temp1, 2*r - 2*k + 2, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*r + 2*k + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+    else { //n is even
+      for(PetscInt k=0; k < n-r; ++k) {
+	//d[k] = (2*r*(2*r + 1) - (2*k + 1)*(2*k + 1))*alpha + (2*k + 2)*(2*k + 2)*beta; flopCount += 3;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, temp2, MPFR_RNDN);
+	mpfr_sub(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(d[k], temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp1, 2*k+2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+	mpfr_add(d[k], d[k], temp1, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < n-r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+	mpfr_set_d(temp1, 2*r - 2*k, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*r + 2*k + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+  }
+  else if (t == 'M') {
+    //g missing last item
+    for(PetscInt k=0; k < n-r-1; ++k) {
+      //g[k] = -(2*k + 2)*(2*k + 1)*beta; flopCount += 2;
+      mpfr_set_d(temp1, 2*k+2, MPFR_RNDN);
+      mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+      mpfr_mul_d(g[k], temp1, -1.0, MPFR_RNDN);
+    }
+    if(n%2) { //n is odd
+      for(PetscInt k=0; k < n-r; ++k) {
+	//d[k] = ((2*r + 1)*(2*r + 2) - (2*k + 1)*(2*k + 1))*alpha + 4*k*k*beta; flopCount += 5;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r+2, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul_d(temp2, temp2, 2*k+1, MPFR_RNDN);
+	mpfr_sub(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp2, 4*k*k, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, beta, MPFR_RNDN);
+	mpfr_add(d[k], temp1, temp2, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < n-r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k + 2)*(2*r + 2*k + 1); flopCount += 2;
+	mpfr_set_d(temp1, 2*r - 2*k + 2, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r + 2*k + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+    else { //n is even
+      for(PetscInt k=0; k < n-1; ++k) {
+	//d[k] = 2*r*(2*r + 1)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, temp2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, gamma, MPFR_RNDN);
+	mpfr_sub(d[k], temp1, temp2, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < n-r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 2;
+	mpfr_set_d(temp1, 2*r - 2*k, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r + 2*k + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+  }
+  else if (t == 'N') {
+    //g missing last item
+    for(PetscInt k=0; k < r-1; ++k) {
+      //g[k] = -(2*k + 2)*(2*k + 3)*beta; flopCount += 2;
+      mpfr_set_d(temp1, 2*k+2, MPFR_RNDN);
+      mpfr_mul_d(temp1, temp1, 2*k+3, MPFR_RNDN);
+      mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
+      mpfr_mul_d(g[k], temp1, -1.0, MPFR_RNDN);
+    }
+    if(n%2) { //n is odd
+      for(PetscInt k=0; k < r; ++k) {
+	//d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 2)*(2*k + 2)*gamma; flopCount += 3;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r+2, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, temp2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, gamma, MPFR_RNDN);
+	mpfr_sub(d[k], temp1, temp2, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k +3); flopCount += 2;
+	mpfr_set_d(temp1, 2*r - 2*k, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r + 2*k + 3, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+    else { //n is even
+      for(PetscInt k=0; k < r; ++k) {
+	//d[k] = 2*r*(2*r + 1)*alpha - (2*k + 2)*(2*k + 2)*alpha + (2*k + 1)*(2*k + 1)*beta;
+	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, temp2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, alpha, MPFR_RNDN);
+	mpfr_sub(temp1, temp1, temp2, MPFR_RNDN);
+	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, temp2, MPFR_RNDN);
+	mpfr_mul(temp2, temp2, beta, MPFR_RNDN);
+	mpfr_add(d[k], temp1, temp2, MPFR_RNDN);
+      }
+      for(PetscInt k=1; k < r; ++k) {
+	//f[k-1] = -alpha*(2*r - 2*k)*(2*r + 2*k + 1); flopCount += 3;
+	mpfr_set_d(temp1, 2*r - 2*k, MPFR_RNDN);
+	mpfr_mul_d(temp1, temp1, 2*r + 2*k + 1, MPFR_RNDN);
+	mpfr_mul(temp1, temp1, alpha, MPFR_RNDN);
+	mpfr_mul_d(f[k-1], temp1, -1.0, MPFR_RNDN);
+      }
+    }
+  }
+
+  mpfr_set_d(sigma[0], 0.0, MPFR_RNDN);
+  for(PetscInt k=1; k<size_d; ++k) {
+    mpfr_div(temp1, g[k-1], f[k-1], MPFR_RNDN);
+    mpfr_sqrt(temp1, temp1, MPFR_RNDN);
+    mpfr_mul(sigma[k], temp1, sigma[k-1], MPFR_RNDN);
+  }
+
+  mpfr_t *M = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d*size_d);
+  //initialize entries
+  for(PetscInt k=0; k < size_d*size_d; ++k)
+    mpfr_init(M[k]);
+  //fill diagonal with d
+  for(PetscInt k=0; k < size_d; ++k)
+    mpfr_set(M[k*size_d + k], d[k], MPFR_RNDN);
+  //fill above diagonal with g
+  for(PetscInt k=0; k < size_d-1; ++k)
+    mpfr_set(M[k*size_d + k+1], g[k], MPFR_RNDN);
+  for(PetscInt k=0; k < size_d-1; ++k)
+    mpfr_set(M[(k+1)*size_d + k], f[k], MPFR_RNDN);
+
+  //scale entries by values of sigma to get symmetric matrix
+  for(PetscInt i=0; i < size_d; ++i) {
+    for(PetscInt j=0; j < size_d; ++j) {
+      mpfr_mul(M[i*size_d+j], M[i*size_d+j], sigma[i], MPFR_RNDN);
+      mpfr_div(M[i*size_d+j], M[i*size_d+j], sigma[j], MPFR_RNDN);
+    }
+  }
+
+  //FIND EIGENVECTORS
+
+  
+  mpfr_clears(alpha, beta, gamma, NULL);
+  PetscFunctionReturn(0);
+}
+  
+
+
+
+
 
 #undef __FUNCT__
 #define __FUNCT__ "getLameCoefficientMatrixSymmetric"

@@ -7,7 +7,7 @@ QUAD_OBJS = tanhsinh.o
 
 SPH_OBJS = sphere/sphere.o sphere/sphSolv.o
 
-ELL_OBJS = ellipsoid/ellipsoid.o ellipsoid/ellSolv.o ellipsoid/ellSolvPetsc.o
+ELL_OBJS = ellipsoid/ellipsoid.o ellipsoid/ellSolv.o ellipsoid/ellSolvPetsc.o ellipsoid/MPFReigs.o
 
 
 ex1: ${SPH_OBJS} ${ELL_OBJS} testProblem.o
