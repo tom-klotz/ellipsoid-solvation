@@ -54,14 +54,15 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->RmaxN = 0;
 
   //default init Romain constants to order 40
-  int N = 80;
+  int N = 50;
   
   s->a = a;
   s->b = b;
   s->c = c;
 
   s->precision = 32;
-
+  mpfr_set_default_prec(4*s->precision);
+  
   mpfr_t temp; 
   mpfr_init(temp);
   
@@ -880,7 +881,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
 	mpfr_set_d(temp2, 2*k+1, MPFR_RNDN);
 	mpfr_mul(temp1, temp1, temp2, MPFR_RNDN);
 	mpfr_mul(temp1, temp1, beta, MPFR_RNDN);
-	mpfr_sub(d[k], d[k], temp1, MPFR_RNDN);
+	mpfr_add(d[k], d[k], temp1, MPFR_RNDN);
       }
       for(PetscInt k=1; k < r+1; ++k) {
 	//f[k-1] = -alpha*(2*(r - k) + 2)*(2*(r + k) + 1); flopCount += 2;
@@ -922,7 +923,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
       mpfr_mul_d(g[k], temp1, -1.0, MPFR_RNDN);
     }
     if(n%2) { //n is odd
-      for(PetscInt k=0; k < n-1; ++k) {
+      for(PetscInt k=0; k < n-r; ++k) {
 	//d[k] = (2*r + 1)*(2*r + 2)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
 	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
 	mpfr_set_d(temp2, 2*r+2, MPFR_RNDN);
@@ -999,7 +1000,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
       }
     }
     else { //n is even
-      for(PetscInt k=0; k < n-1; ++k) {
+      for(PetscInt k=0; k < n-r; ++k) {
 	//d[k] = 2*r*(2*r + 1)*alpha - (2*k + 1)*(2*k + 1)*gamma; flopCount += 3;
 	mpfr_set_d(temp1, 2*r+1, MPFR_RNDN);
 	mpfr_mul_d(temp1, temp1, 2*r, MPFR_RNDN);
@@ -1101,17 +1102,19 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
     }
   }
 
-  //FIND EIGENVECTORS
-  mpfr_t *guess, *result;
-  guess = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
-  result = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d);
-  for(PetscInt k=0; k < size_d; ++k) {
-    mpfr_inits(guess[k], result[k], NULL);
-    mpfr_set_d(guess[k], 0.5, MPFR_RNDN);
+  //INIT MAT, COMPUTE VALUES
+  *mat = (mpfr_t*) malloc(sizeof(mpfr_t)*size_d*size_d);
+  for(PetscInt k=0; k < size_d*size_d; ++k) {
+    mpfr_init((*mat)[k]);
   }
-  if(n==6 && t=='K') {
-    ierr = eigsMPFR(size_d, M, guess, result);CHKERRQ(ierr);
+
+  printf("Getting eigenvalues for n=%d and t=%c\n", n, t);
+  if(n==3 && t=='K') {
+    MatViewMPFR(size_d, size_d, M);
   }
+  ierr = eigsMPFR(size_d, M, *mat);CHKERRQ(ierr);
+  
+  
 
   mpfr_clears(alpha, beta, gamma, NULL);
   PetscFunctionReturn(0);
@@ -1556,23 +1559,30 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
   
   if(e->Rconsts != NULL)
     free(e->Rconsts);
+  //initialize vector of romain constant matrices
   e->Rconsts = (double***) malloc(sizeof(double**)*(N+1));
+  //initialize mpfr version
+  e->RconstsMPFR = (mpfr_t***) malloc(sizeof(mpfr_t**)*(N+1));
   //int* mat_size; *mat_size = 1;
   for(int n=0; n<=N; ++n) {
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
+    e->RconstsMPFR[n] = (mpfr_t**) malloc(sizeof(mpfr_t*)*4);
     //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
     ierr = getLameCoefficientMatrixSymmetric(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
-    ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'K', n, NULL, NULL);CHKERRQ(ierr);
+    ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'K', n, NULL, e->RconstsMPFR[n]+0);CHKERRQ(ierr);
     //PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s, char t, PetscInt n, PetscInt* const mat_size, mpfr_t **mat)
     //printf("wowze\n");
     if(n != 0) {
       //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
       ierr = getLameCoefficientMatrixSymmetric(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'L', n, NULL, e->RconstsMPFR[n]+1);CHKERRQ(ierr);
       //e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
       ierr = getLameCoefficientMatrixSymmetric(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'M', n, NULL, e->RconstsMPFR[n]+2);CHKERRQ(ierr);
       if(n != 1) {
 	//e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
 	ierr = getLameCoefficientMatrixSymmetric(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
+	ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'N', n, NULL, e->RconstsMPFR[n]+3);CHKERRQ(ierr);
       }
     }
   }

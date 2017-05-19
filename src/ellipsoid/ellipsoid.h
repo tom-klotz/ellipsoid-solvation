@@ -13,6 +13,7 @@ typedef struct EllipsoidalSystem {
   double **normConstants;
   int DmaxN;
   double ***Rconsts;
+  mpfr_t ***RconstsMPFR;
   int RmaxN;
   char **tVals;
   int **tpVals;
