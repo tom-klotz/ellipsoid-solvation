@@ -110,7 +110,7 @@ PetscErrorCode calcNormalization2(EllipsoidalSystem *e, PetscInt n, PetscInt p, 
 PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx);
 PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *Ideriv);
 //PetscErrorCode integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
-PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
+PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, mpfr_t *integral, void *ctx);
 PetscErrorCode integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
 PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
 PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
