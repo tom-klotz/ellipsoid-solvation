@@ -103,6 +103,7 @@ PetscErrorCode calcLame2(EllipsoidalSystem *s, int n, int p, double l, double *s
 PetscErrorCode calcI(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
 PetscErrorCode calcSurfaceOperatorEigenvalues(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
 PetscErrorCode calcLame(struct EllipsoidalSystem *s, int n, int p, double l, int signm, int signn, double *Enp);
+PetscErrorCode CalcLameMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt p, mpfr_t l, PetscInt signm, PetscInt signn, mpfr_t *Enp);
 PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx);
 PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
 PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *normConst);
@@ -112,7 +113,7 @@ PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int
 //PetscErrorCode integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
 PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), EllipsoidalSystem *e, mpfr_t a, mpfr_t b, int digits, mpfr_t *integral, void *ctx);
 PetscErrorCode integrateMidpoint(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), mpfr_t a, mpfr_t b, int digits, double *integral, void *ctx);
-PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c);
+PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c, PetscInt precision);
 PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N);
 PetscErrorCode getLameCoefficientMatrix(struct EllipsoidalSystem *s, char t, int n, int *mat_size, double **mat);
 

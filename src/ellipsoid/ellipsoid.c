@@ -40,7 +40,7 @@ void matTranspose(double *A, int n) {
 
 #undef __FUNCT__
 #define __FUNCT__ "initEllipsoidalSystem"
-PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c)
+PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, double b, double c, PetscInt precision)
 {
   PetscErrorCode ierr;
   PetscInt flopCount;
@@ -60,8 +60,8 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->b = b;
   s->c = c;
 
-  s->precision = 32;
-  mpfr_set_default_prec(4*s->precision);
+  s->precision = precision;
+  mpfr_set_default_prec(4*precision);
   
   mpfr_t temp; 
   mpfr_init(temp);
@@ -1109,13 +1109,27 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
   }
 
   printf("Getting eigenvalues for n=%d and t=%c\n", n, t);
-  if(n==3 && t=='K') {
-    MatViewMPFR(size_d, size_d, M);
-  }
+
+  //compute eigenvectors of symmetric matrix
   ierr = eigsMPFR(size_d, M, *mat);CHKERRQ(ierr);
   
-  
+  //transform back to get eigenvectors of non-symmetric matrix
+  for(PetscInt i=0; i < size_d; ++i) {
+    for(PetscInt j=0; j < size_d; ++j) {
+      //(*mat)[i*size_d+j] = (*mat)[i*size_d+j]*1./(sigma[j]);
+      mpfr_div((*mat)[i*size_d+j], (*mat)[i*size_d+j], sigma[j], MPFR_RNDN);
+    }
+  }
 
+  for(PetscInt i=0; i < size_d; ++i) {
+    for(PetscInt j=0; j < size_d; ++j) {
+      mpfr_neg(temp1, s->hp_h2, MPFR_RNDN);
+      mpfr_set_d(temp2, size_d-1, MPFR_RNDN);
+      mpfr_pow(temp1, temp1, temp2, MPFR_RNDN);
+      mpfr_div(temp1, (*mat)[(i*size_d)+size_d-1], temp1, MPFR_RNDN);
+      mpfr_div((*mat)[i*size_d+j], (*mat)[i*size_d+j], temp1, MPFR_RNDN);
+    }
+  }
   mpfr_clears(alpha, beta, gamma, NULL);
   PetscFunctionReturn(0);
 }
@@ -1679,14 +1693,18 @@ PetscErrorCode CalcLameMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt p, mpfr_t
   mpfr_t *b = e->RconstsMPFR[n][type]+tp*(m+1);
 
   mpfr_set(P, b[m], MPFR_RNDN);
+  printf("t = %c\n", t);
+  printf("P: %4.4f\n", mpfr_get_d(P, MPFR_RNDN));
   for(PetscInt j=m-1; j > -1; --j) {
     // P = P*Lambda_Romain + b[j]
     mpfr_mul(P, P, Lambda_Romain, MPFR_RNDN);
     mpfr_add(P, P, b[j], MPFR_RNDN);
+    printf("P: %4.4f\n", mpfr_get_d(P, MPFR_RNDN));
   }
 
   // Enp = psi*P
   mpfr_mul(*Enp, psi, P, MPFR_RNDN);
+  printf("Enp: %4.4f\n", mpfr_get_d(*Enp, MPFR_RNDN));
   
   mpfr_clears(temp1, temp2, signh, signk, l2, psi, Lambda_Romain, P, NULL);
   PetscFunctionReturn(0);

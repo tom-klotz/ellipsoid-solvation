@@ -136,6 +136,8 @@ PetscErrorCode main(int argc, char **argv)
   ierr = VecView(exactSolution, PETSC_VIEWER_STDOUT_SELF);
   printf("Ell: \n");
   ierr = VecView(ellSolutions[MAX_N-1], PETSC_VIEWER_STDOUT_SELF);
-  
+
+
+  ierr = PetscFinalize();CHKERRQ(ierr);
   PetscFunctionReturn(0);
 }

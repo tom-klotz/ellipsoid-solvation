@@ -14,5 +14,9 @@ ex1: ${SPH_OBJS} ${ELL_OBJS} ex1.o testFunctions.o
 	${CLINKER} -o $@ $^ ${SPH_LIBS} ${PETSC_LIB}
 	${DSYMUTIL} $@
 
+ex2: ${SPH_OBJS} ${ELL_OBJS} ex2.o
+	${CLINKER} -o $@ $^ ${SPH_LIBS} ${PETSC_LIB}
+	${DSYMUTIL} $@
+
 include ${PETSC_DIR}/lib/petsc/conf/variables
 include ${PETSC_DIR}/lib/petsc/conf/rules

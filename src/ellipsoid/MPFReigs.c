@@ -206,7 +206,7 @@ PetscErrorCode eigsMPFR(PetscInt size_d, mpfr_t *mat, mpfr_t *result) {
     //add new eigval
     mpfr_set(eigvals[i], norm, MPFR_RNDN);
     
-    printf("EIGVAL IS %3.3f\n", mpfr_get_d(norm, MPFR_RNDN));
+    //printf("EIGVAL IS %3.3f\n", mpfr_get_d(norm, MPFR_RNDN));
 
   }
   mpfr_clear(norm);
