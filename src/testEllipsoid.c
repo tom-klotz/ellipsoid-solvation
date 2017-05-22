@@ -361,10 +361,10 @@ int compareIntegration()
 
   //set up ellipsoidal system
   EllipsoidalSystem e;
-  double a = 3.0;
-  double b = 2.0;
-  double c = 1.0;
-  initEllipsoidalSystem(&e, a, b, c, digits);
+  double xA = 3.0;
+  double yB = 2.0;
+  double zC = 1.0;
+  initEllipsoidalSystem(&e, xA, yB, zC, digits);
   
   
   mpfr_t bound_a, bound_b;  
@@ -380,8 +380,8 @@ int compareIntegration()
   integrateMidpoint((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
 
 
-  printf("ze MPFR integral is: %15.15f\n", integralMPFR);
-  printf("ze Midpoint integral is: %15.15f\n", integralMidpoint);
+  printf("MPFR integral is: %15.15f\n", integralMPFR);
+  printf("Midpoint integral is: %15.15f\n", integralMidpoint);
   printf("oh wow\n");
 
   mpfr_clears(a, b, c, NULL);

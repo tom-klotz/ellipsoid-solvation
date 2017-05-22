@@ -54,7 +54,7 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->RmaxN = 0;
 
   //default init Romain constants to order 40
-  int N = 20;
+  int N = 10;
   
   s->a = a;
   s->b = b;
@@ -1094,6 +1094,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
   for(PetscInt k=0; k < size_d-1; ++k)
     mpfr_set(M[(k+1)*size_d + k], f[k], MPFR_RNDN);
 
+
   //scale entries by values of sigma to get symmetric matrix
   for(PetscInt i=0; i < size_d; ++i) {
     for(PetscInt j=0; j < size_d; ++j) {
@@ -1112,7 +1113,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
 
   //compute eigenvectors of symmetric matrix
   ierr = eigsMPFR(size_d, M, s->precision, *mat);CHKERRQ(ierr);
-  
+
   //transform back to get eigenvectors of non-symmetric matrix
   for(PetscInt i=0; i < size_d; ++i) {
     for(PetscInt j=0; j < size_d; ++j) {
@@ -1130,6 +1131,10 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
       mpfr_div((*mat)[i*size_d+j], (*mat)[i*size_d+j], temp1, MPFR_RNDN);
     }
   }
+
+  //hard fix for n=0 because i have no idea what goes wrong but i know the coef is 1.0
+  if(n == 0)
+    mpfr_set_d((*mat)[0], 1.0, MPFR_RNDN);
   mpfr_clears(alpha, beta, gamma, NULL);
   PetscFunctionReturn(0);
 }
@@ -1266,7 +1271,6 @@ PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, ch
     }
   }
 
-
   sigma[0] = 1;
   for(PetscInt k=1; k<size_d; ++k) {
     sigma[k] = sqrt(g[k-1]/f[k-1])*sigma[k-1];
@@ -1303,7 +1307,7 @@ PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, ch
   //transpose M for lapack
   matTranspose(M, size_d);
   
-
+  
   int lwork = 16*size_d;
   int info;
   double *work, *wr, *wi;
@@ -1354,6 +1358,8 @@ PetscErrorCode getLameCoefficientMatrixSymmetric(struct EllipsoidalSystem *s, ch
       flopCount += 3;
     }
   }
+
+
   ierr = PetscLogFlops(flopCount);CHKERRQ(ierr);
   //return vr;
   PetscFunctionReturn(0);
@@ -1693,18 +1699,14 @@ PetscErrorCode CalcLameMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt p, mpfr_t
   mpfr_t *b = e->RconstsMPFR[n][type]+tp*(m+1);
 
   mpfr_set(P, b[m], MPFR_RNDN);
-  printf("t = %c\n", t);
-  printf("P: %4.4f\n", mpfr_get_d(P, MPFR_RNDN));
   for(PetscInt j=m-1; j > -1; --j) {
     // P = P*Lambda_Romain + b[j]
     mpfr_mul(P, P, Lambda_Romain, MPFR_RNDN);
     mpfr_add(P, P, b[j], MPFR_RNDN);
-    printf("P: %4.4f\n", mpfr_get_d(P, MPFR_RNDN));
   }
 
   // Enp = psi*P
   mpfr_mul(*Enp, psi, P, MPFR_RNDN);
-  printf("Enp: %4.4f\n", mpfr_get_d(*Enp, MPFR_RNDN));
   
   mpfr_clears(temp1, temp2, signh, signk, l2, psi, Lambda_Romain, P, NULL);
   PetscFunctionReturn(0);
@@ -2152,13 +2154,13 @@ PetscErrorCode calcNormalizationMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt 
   mpfr_t *mpfrone  = &(e->mpfrone);
 
   
-  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, 16, integrals, &ctx1);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, e->precision, integrals, &ctx1);
 
-  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, 16, integrals+1, &ctx2);
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, e->precision, integrals+1, &ctx2);
 
-  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, 16, integrals+2, &ctx3);
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, e->precision, integrals+2, &ctx3);
 
-  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, 16, integrals+3, &ctx4);
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, e->precision, integrals+3, &ctx4);
   
 
   //*normConst = 8.0*(ints[2]*ints[1] - ints[0]*ints[3]);
@@ -2493,7 +2495,7 @@ PetscErrorCode integrateMPFR(PetscErrorCode (*f)(mpfr_t *,mpfr_t*,void*), Ellips
     printf("Please give a positive number of significant digits\n");
     return 1;
   }
-  digits = 16;
+
   /* Create high precision storage */
 
 

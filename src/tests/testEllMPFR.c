@@ -13,7 +13,7 @@ PetscErrorCode TestNormalizationMPFR()
 {
   PetscErrorCode ierr;
   EllipsoidalSystem e;
-  const PetscInt prec = 64;
+  const PetscInt prec = 128;
   PetscReal xA = 3.0;
   PetscReal yB = 2.0;
   PetscReal zC = 1.0;
@@ -97,8 +97,9 @@ PetscErrorCode TestNormalizationMPFR()
   mpfr_const_pi(pi, MPFR_RNDN);
 
   mpfr_t analytic[9];
+  mpfr_t approx[9];
   for(PetscInt k=0; k < 9; ++k)
-    mpfr_init(analytic[k]);
+    mpfr_inits(analytic[k], approx[k], NULL);
 
   //analytic[0] = 4*PETSC_PI
   mpfr_mul_d(analytic[0], pi, 4.0, MPFR_RNDN);
@@ -113,8 +114,25 @@ PetscErrorCode TestNormalizationMPFR()
   mpfr_mul(analytic[1], temp1, temp2, MPFR_RNDN);
   printf("analytic[1] = %4.4e\n", mpfr_get_d(analytic[1], MPFR_RNDN));
 
+
+
+  ierr = calcNormalizationMPFR(&e, 0, 0, approx+0);CHKERRQ(ierr);
+  ierr = calcNormalizationMPFR(&e, 1, 0, approx+1);CHKERRQ(ierr);
+  mpfr_t err, l;
+  mpfr_inits(err, l, NULL);
+  mpfr_set_d(l, 1.0, MPFR_RNDN);
+
+
+  mpfr_sub(err, approx[1], analytic[1], MPFR_RNDN);
+  mpfr_div(err, err, approx[1], MPFR_RNDN);
+  mpfr_abs(err, err, MPFR_RNDN);
+  mpfr_log10(err, err, MPFR_RNDN);
+  printf("the error is %2.2f\n", mpfr_get_d(err, MPFR_RNDN));
+  mpfr_clears(err, l, NULL);
   
-  
+
+  for(PetscInt k=0; k < 9; ++k)
+    mpfr_clears(analytic[k], approx[k], NULL);
   mpfr_clears(hx, hy, hz, NULL);
   mpfr_clears(temp1, temp2, temp3, pi, NULL);
   mpfr_clears(a3, b3, c3, NULL);
