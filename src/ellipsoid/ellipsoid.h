@@ -108,6 +108,7 @@ PetscErrorCode integrand(mpfr_t *x, mpfr_t *val, FuncInfo *ctx);
 PetscErrorCode calcLameDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *sol);
 PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *normConst);
 PetscErrorCode calcNormalization2(EllipsoidalSystem *e, PetscInt n, PetscInt p, double *intVals, double *normConst);
+PetscErrorCode calcNormalizationMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt p, mpfr_t *normConst);
 PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx);
 PetscErrorCode calcIDerivative(EllipsoidalSystem *e, int n, int p, double l, int signm, int signn, double *Ideriv);
 //PetscErrorCode integrate(PetscErrorCode (*f)(mpfr_t*, mpfr_t*, void*), double a, double b, int digits, double *integral, void *ctx);
