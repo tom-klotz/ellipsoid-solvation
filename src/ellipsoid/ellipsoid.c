@@ -1108,10 +1108,10 @@ PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s
     mpfr_init((*mat)[k]);
   }
 
-  printf("Getting eigenvalues for n=%d and t=%c\n", n, t);
+  //printf("Getting eigenvalues for n=%d and t=%c\n", n, t);
 
   //compute eigenvectors of symmetric matrix
-  ierr = eigsMPFR(size_d, M, *mat);CHKERRQ(ierr);
+  ierr = eigsMPFR(size_d, M, s->precision, *mat);CHKERRQ(ierr);
   
   //transform back to get eigenvectors of non-symmetric matrix
   for(PetscInt i=0; i < size_d; ++i) {

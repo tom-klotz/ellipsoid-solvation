@@ -129,7 +129,7 @@ PetscErrorCode OrthogMap(PetscInt size_d, mpfr_t *x, mpfr_t *v1, mpfr_t *lambda,
 
 #undef __FUNCT__
 #define __FUNCT__ "eigsMPFR"
-PetscErrorCode eigsMPFR(PetscInt size_d, mpfr_t *mat, mpfr_t *result) {
+PetscErrorCode eigsMPFR(PetscInt size_d, mpfr_t *mat, PetscInt prec, mpfr_t *result) {
 
   PetscErrorCode ierr;
   mpfr_t temp1;
@@ -163,7 +163,7 @@ PetscErrorCode eigsMPFR(PetscInt size_d, mpfr_t *mat, mpfr_t *result) {
     mpfr_log10(error, error, MPFR_RNDN);
     mpfr_log10(error2, error2, MPFR_RNDN);
     PetscInt j=0;
-    while(mpfr_get_d(error, MPFR_RNDN) > -32 && mpfr_get_d(error2, MPFR_RNDN) > -32) {
+    while(mpfr_get_d(error, MPFR_RNDN) > -prec && mpfr_get_d(error2, MPFR_RNDN) > -prec) {
       j++;
       for(PetscInt l=0; l < size_d; ++l)
 	mpfr_set(prev[l], eigvec[l], MPFR_RNDN);

@@ -12,7 +12,7 @@ int testCoordinateTransform()
   //Verify that the ellipsoidal to Cartesian transformation is a bijection
   //the tolerance is 10 significant figures
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
+  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0, 32);
   
   double relErrorX, relErrorY, relErrorZ;
 
@@ -62,7 +62,7 @@ int testLameType()
   checks[2] = (char*) malloc(sizeof(char)*65);
 
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
+  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0, 32);
   int index[3] = { 1, 2, 5 };
   int k;
   int n;
@@ -108,7 +108,7 @@ int testI()
 {
   //Using results from Dassios, test the computation of I^p_n for n = 0, 1, 2
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
+  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0, 32);
   double a = e.a;
   double b = e.b;
   double c = e.c;
@@ -232,7 +232,7 @@ int testNormalization()
   double b = 2.0;
   double c = 1.0;
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 32);
   //Dassios (B14)
   double firstTerm = (a*a + b*b + c*c)/3.0;
   double secondTerm = sqrt((a*a*a*a - b*b*c*c) + (b*b*b*b - a*a*c*c) + (c*c*c*c - a*a*b*b))/3.0;
@@ -251,6 +251,8 @@ int testNormalization()
 			 4*PETSC_PI/15 * hx*hx*hy*hy*hz*hz*hz*hz,
 			 4*PETSC_PI/15 * hx*hx*hy*hy*hy*hy*hz*hz,
 			 4*PETSC_PI/15 * hx*hx*hx*hx*hy*hy*hz*hz };
+  printf("analytic[0] = %4.4e\n", analytic[0]);
+  printf("analytic[1] = %4.4e\n", analytic[1]);
   double value, estimate, error;
   int counter = 0;
   for(int n=0; n<3; ++n) {
@@ -309,28 +311,28 @@ int testSurfaceOperatorEigenvalues()
   double a = 3.0;
   double b = 2.0;
   double c = 1.0;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 32);
   double l = a;
   int n = 1;
   double analytic[3];
-  double integral;
+  mpfr_t integral;
 
 
   mpfr_t mpfrzero, mpfrone;
-  mpfr_inits(mpfrzero, mpfrone, NULL);
+  mpfr_inits(mpfrzero, mpfrone, integral, NULL);
   mpfr_set_d(mpfrzero, 0.0, MPFR_RNDN);
   mpfr_set_d(mpfrone, 1.0, MPFR_RNDN);
 
   //Integrals are from Ritter, need to transform integrals to finite interval
   FuncInfo4 ctx = { &e, a*a, b*b, c*c, a*a };
   integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
-  analytic[0] = (a*b*c * integral - 1.0)/2.0;
+  analytic[0] = (a*b*c * mpfr_get_d(integral, MPFR_RNDN) - 1.0)/2.0;
   ctx.botVar = b*b;
   integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
-  analytic[1] = (a*b*c * integral - 1.0)/2.0;
+  analytic[1] = (a*b*c * mpfr_get_d(integral, MPFR_RNDN) - 1.0)/2.0;
   ctx.botVar = c*c;
   integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) testfunc, &e, mpfrzero, mpfrone, 14, &integral, &ctx);
-  analytic[2] = (a*b*c * integral - 1.0)/2.0;
+  analytic[2] = (a*b*c * mpfr_get_d(integral, MPFR_RNDN) - 1.0)/2.0;
 
 
   double *ev = (double*) malloc(sizeof(double)*(3));
@@ -342,6 +344,7 @@ int testSurfaceOperatorEigenvalues()
       return 0;
     }
   }
+  mpfr_clears(mpfrzero, mpfrone, integral, NULL);
   free(ev);
   return 1;
 
@@ -361,23 +364,28 @@ int compareIntegration()
   double a = 3.0;
   double b = 2.0;
   double c = 1.0;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, digits);
+  
   
   mpfr_t bound_a, bound_b;  
   mpfr_inits2(4*digits, bound_a, bound_b, NULL);
   
   FuncInfo2 ctx1 = { .e = &e, .n = n, .p = p, .numeratorType = 0, .denomSign = 1 };
 
+  mpfr_t a, b, c;
+  mpfr_inits(a, b, c, NULL);
   double integralMPFR, integralMidpoint;
 
   integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, &e, e.hp_h, e.hp_k, 14, &integralMPFR, &ctx1);
   integrateMidpoint((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e.hp_h, e.hp_k, 10, &integralMidpoint, &ctx1);
 
+
   printf("ze MPFR integral is: %15.15f\n", integralMPFR);
   printf("ze Midpoint integral is: %15.15f\n", integralMidpoint);
   printf("oh wow\n");
 
-
+  mpfr_clears(a, b, c, NULL);
+  
   return 0;
 }
 
