@@ -130,7 +130,7 @@ PetscErrorCode NormConstantIntFixedERF(EllipsoidalSystem *e, PetscInt n, PetscIn
 #define __FUNCT__ "NormPlot"
 PetscErrorCode NormPlot()
 {
-  const PetscInt NUM_SOLUTIONS = 43;
+  const PetscInt NUM_SOLUTIONS = 50;
   const PetscInt POINTS_MIN = 4;
   const PetscInt POINTS_STEP = 2;
   const PetscInt prec = 16;
@@ -149,16 +149,20 @@ PetscErrorCode NormPlot()
   PetscErrorCode ierr;
   PetscInt i;
   PetscEventPerfInfo info;
-  PetscInt n = 3;
-  PetscInt p = 5;
+  PetscInt n = 7;
+  PetscInt p = 9;
   PetscFunctionBegin;
 
   
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 256);
 
   /* calculate "exact" solution */
+  mpfr_t exactsol;
+  mpfr_init(exactsol);
+  ierr = calcNormalizationMPFR(&e, n, p, &exactsol);
   ierr = calcNormalization(&e, n, p, &solExact);CHKERRQ(ierr);
   ierr = calcNormalization2(&e, n, p, intExact, &solExact);CHKERRQ(ierr);
+  solExact = mpfr_get_d(exactsol, MPFR_RNDN);
   printf("old norm constant: %15.15f\n", solExact);
 
   /* calculate approximate solutions and record flops */
@@ -205,7 +209,7 @@ PetscErrorCode NormPlot()
   fclose(fp1);
   fclose(fp2);
   fclose(fp3);
-
+  mpfr_clear(exactsol);
   
   PetscFunctionReturn(0);
 }
@@ -247,9 +251,9 @@ PetscErrorCode NormPlot2()
   PetscFunctionBegin;
 
   
-  ierr = initEllipsoidalSystem(&e1, 2.5, 2.0, 1.0);CHKERRQ(ierr);
-  ierr = initEllipsoidalSystem(&e2, 2.5, 2.0, 1.5);CHKERRQ(ierr);
-  ierr = initEllipsoidalSystem(&e3, 2.5, 2.0, 1.9);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e1, 2.5, 2.0, 1.0, 64);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e2, 2.5, 2.0, 1.5, 64);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e3, 2.5, 2.0, 1.89, 64);CHKERRQ(ierr);
 
   
   for(PetscInt num=0; num<3; ++num) {
@@ -355,7 +359,7 @@ PetscErrorCode NormPlotSE()
   PetscFunctionBegin;
 
   
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
 
   /* calculate approximate solutions and record flops */
   char text[40] = "%d points";
@@ -419,7 +423,7 @@ PetscErrorCode NormPlotERF()
   PetscFunctionBegin;
 
   
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
 
   /* calculate "exact" solution */
   ierr = calcNormalization(&e, n, p, &solOld);CHKERRQ(ierr);
@@ -491,8 +495,8 @@ PetscErrorCode main(int argc, char **argv)
   }
   */
   
-  //ierr = NormPlot();CHKERRQ(ierr);
-  ierr = NormPlot2();CHKERRQ(ierr);
+  ierr = NormPlot();CHKERRQ(ierr);
+  //ierr = NormPlot2();CHKERRQ(ierr);
   //ierr = NormPlotSE();CHKERRQ(ierr);
   //ierr = NormPlotERF();CHKERRQ(ierr);
   

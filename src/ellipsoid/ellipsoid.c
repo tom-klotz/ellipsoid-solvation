@@ -2327,21 +2327,30 @@ PetscErrorCode calcNormalization2(EllipsoidalSystem *e, PetscInt n, PetscInt p, 
   FuncInfo2 ctx4 = { .e = e, .n = n, .p = p, .numeratorType = 1, .denomSign = -1 };
   int err[4];
   double integrals[4];
+  mpfr_t integ[4];
+  mpfr_inits(integ[0], integ[1], integ[2], integ[3], NULL);
 
   mpfr_t *mpfrzero = &(e->mpfrzero);
   mpfr_t *mpfrone  = &(e->mpfrone);
   
-  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals, &ctx1);
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integ, &ctx1);
+  integrals[0] = mpfr_get_d(integ[0], MPFR_RNDN);
   intVals[0] = integrals[0];
-  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integrals+1, &ctx2);
+  
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, e->hp_h, e->hp_k, 16, integ+1, &ctx2);
+  integrals[1] = mpfr_get_d(integ[1], MPFR_RNDN);
   intVals[1] = integrals[1];
-  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+2, &ctx3);
+  
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integ+2, &ctx3);
+  integrals[2] = mpfr_get_d(integ[2], MPFR_RNDN);
   intVals[2] = integrals[2];
-  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integrals+3, &ctx4);
+
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1, e, *mpfrzero, e->hp_h, 16, integ+3, &ctx4);
+  integrals[3] = mpfr_get_d(integ[3], MPFR_RNDN);
   intVals[3] = integrals[3];
   *normConst = 8.0*(integrals[2]*integrals[1] - integrals[0]*integrals[3]);
 
-
+  mpfr_clears(integ[0], integ[1], integ[2], integ[3], NULL);
   ierr = PetscLogFlops(4);CHKERRQ(ierr);
   PetscFunctionReturn(0);
   /*

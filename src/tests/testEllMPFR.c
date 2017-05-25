@@ -97,9 +97,9 @@ PetscErrorCode TestNormalizationMPFR()
   mpfr_const_pi(pi, MPFR_RNDN);
 
   mpfr_t analytic[9];
-  mpfr_t approx[9];
+  mpfr_t approx[9], doubleApprox[9];
   for(PetscInt k=0; k < 9; ++k)
-    mpfr_inits(analytic[k], approx[k], NULL);
+    mpfr_inits(analytic[k], approx[k], doubleApprox[k], NULL);
 
   //analytic[0] = 4*PETSC_PI
   mpfr_mul_d(analytic[0], pi, 4.0, MPFR_RNDN);
@@ -112,27 +112,46 @@ PetscErrorCode TestNormalizationMPFR()
   mpfr_mul(temp2, temp2, hz, MPFR_RNDN);
   mpfr_mul(temp2, temp2, hz, MPFR_RNDN);
   mpfr_mul(analytic[1], temp1, temp2, MPFR_RNDN);
-  printf("analytic[1] = %4.4e\n", mpfr_get_d(analytic[1], MPFR_RNDN));
+
+  //analytic[2] = 4*PETSC_PI/3 * hx*hx*hz*hz
+  mpfr_div_d(temp1, pi, 3.0, MPFR_RNDN);
+  mpfr_mul_d(temp1, temp1, 4.0, MPFR_RNDN);
+  mpfr_mul(temp2, hx, hx, MPFR_RNDN);
+  mpfr_mul(temp2, temp2, hz, MPFR_RNDN);
+  mpfr_mul(temp2, temp2, hz, MPFR_RNDN);
+  mpfr_mul(analytic[2], temp1, temp2, MPFR_RNDN);
+
+  //analytic[3] = 4*PETSC_PI/3 * hx*hx*hy*hy
+  mpfr_div_d(temp1, pi, 3.0, MPFR_RNDN);
+  mpfr_mul_d(temp1, temp1, 4.0, MPFR_RNDN);
+  mpfr_mul(temp2, hx, hx, MPFR_RNDN);
+  mpfr_mul(temp2, temp2, hy, MPFR_RNDN);
+  mpfr_mul(temp2, temp2, hy, MPFR_RNDN);
+  mpfr_mul(analytic[3], temp1, temp2, MPFR_RNDN);
+  
+  //analytic[4] = -8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaD - a*a)*(LambdaD - b*b)*(LambdaD - c*c)
+
+  //analytic[5] = 8*PETSC_PI/5 * (LambdaD - LambdaDprime)*(LambdaDprime - a*a)*(LambdaDprime - b*b)*(LambdaDprime - c*c),
 
 
 
   ierr = calcNormalizationMPFR(&e, 0, 0, approx+0);CHKERRQ(ierr);
+  ierr = calcNormalization    (&e, 0, 0, doubleApprox+0);CHKERRQ(ierr);
   ierr = calcNormalizationMPFR(&e, 1, 0, approx+1);CHKERRQ(ierr);
-  mpfr_t err, l;
-  mpfr_inits(err, l, NULL);
-  mpfr_set_d(l, 1.0, MPFR_RNDN);
-
-
-  mpfr_sub(err, approx[1], analytic[1], MPFR_RNDN);
-  mpfr_div(err, err, approx[1], MPFR_RNDN);
-  mpfr_abs(err, err, MPFR_RNDN);
-  mpfr_log10(err, err, MPFR_RNDN);
-  printf("the error is %2.2f\n", mpfr_get_d(err, MPFR_RNDN));
-  mpfr_clears(err, l, NULL);
+  ierr = calcNormalizationMPFR(&e, 1, 1, approx+2);CHKERRQ(ierr);
+  mpfr_t err[9];
+  for(PetscInt k=0; k < 4; ++k) {
+    mpfr_init(err[k]);
+    mpfr_sub(err[k], approx[k], analytic[k], MPFR_RNDN);
+    mpfr_div(err[k], err[k], analytic[k], MPFR_RNDN);
+    mpfr_abs(err[k], err[k], MPFR_RNDN);
+    mpfr_log10(err[k], err[k], MPFR_RNDN);
+    printf("the error is %2.2f\n", mpfr_get_d(err[k], MPFR_RNDN));
+  }
   
 
   for(PetscInt k=0; k < 9; ++k)
-    mpfr_clears(analytic[k], approx[k], NULL);
+    mpfr_clears(analytic[k], approx[k], err[k], doubleApprox[k], NULL);
   mpfr_clears(hx, hy, hz, NULL);
   mpfr_clears(temp1, temp2, temp3, pi, NULL);
   mpfr_clears(a3, b3, c3, NULL);
