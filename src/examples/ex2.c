@@ -7,8 +7,6 @@
 
 #include "../ellipsoid/ellipsoid.h"
 #include "../ellipsoid/ellSolv.h"
-#include "../sphere/sphere.h"
-#include "../sphere/sphSolv.h"
 #include "../constants.h"
 #include "testFunctions.h"
 

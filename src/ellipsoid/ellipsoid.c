@@ -54,7 +54,7 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->RmaxN = 0;
 
   //default init Romain constants to order 40
-  int N = 10;
+  int N = 25;
   
   s->a = a;
   s->b = b;
@@ -1585,6 +1585,7 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
   e->RconstsMPFR = (mpfr_t***) malloc(sizeof(mpfr_t**)*(N+1));
   //int* mat_size; *mat_size = 1;
   for(int n=0; n<=N; ++n) {
+    printf("n=%d\n", n);
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
     e->RconstsMPFR[n] = (mpfr_t**) malloc(sizeof(mpfr_t*)*4);
     //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
@@ -2175,6 +2176,49 @@ PetscErrorCode calcNormalizationMPFR(EllipsoidalSystem *e, PetscInt n, PetscInt 
   PetscFunctionReturn(0);
 }
 
+#undef __FUNCT__
+#define __FUNCT__ "calcNormalization2MPFR"
+PetscErrorCode calcNormalization2MPFR(EllipsoidalSystem *e, PetscInt n, PetscInt p, mpfr_t *intVals, mpfr_t *normConst)
+{
+
+  PetscErrorCode ierr;
+  int err[4];
+  mpfr_t integrals[4];
+  mpfr_t temp;
+
+  PetscFunctionBegin;
+
+  mpfr_init(temp);
+  
+  FuncInfo2 ctx1 = { .e = e, .n = n, .p = p, .numeratorType = 0, .denomSign = 1 };
+  FuncInfo2 ctx2 = { .e = e, .n = n, .p = p, .numeratorType = 1, .denomSign = 1 };
+  FuncInfo2 ctx3 = { .e = e, .n = n, .p = p, .numeratorType = 0, .denomSign = -1 };
+  FuncInfo2 ctx4 = { .e = e, .n = n, .p = p, .numeratorType = 1, .denomSign = -1 };
+
+  mpfr_t *mpfrzero = &(e->mpfrzero);
+  mpfr_t *mpfrone  = &(e->mpfrone);
+
+  
+  err[0] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, e->precision, intVals, &ctx1);
+
+  err[1] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, e->hp_h, e->hp_k, e->precision, intVals+1, &ctx2);
+
+  err[2] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, e->precision, intVals+2, &ctx3);
+
+  err[3] = integrateMPFR((PetscErrorCode (*)(mpfr_t*, mpfr_t*, void*)) normFunction1MPFR, e, *mpfrzero, e->hp_h, e->precision, intVals+3, &ctx4);
+  
+
+  //*normConst = 8.0*(ints[2]*ints[1] - ints[0]*ints[3]);
+  mpfr_mul(*normConst, intVals[2], intVals[1], MPFR_RNDN);
+  mpfr_mul(temp, intVals[0], intVals[3], MPFR_RNDN);
+  mpfr_sub(*normConst, *normConst, temp, MPFR_RNDN);
+  mpfr_mul_d(*normConst, *normConst, 8.0, MPFR_RNDN);
+
+  mpfr_clear(temp);
+
+  PetscFunctionReturn(0);
+}
+
 
 #undef __FUNCT__
 #define __FUNCT__ "calcNormalization"
@@ -2306,6 +2350,7 @@ PetscErrorCode calcNormalization(EllipsoidalSystem *e, int n, int p, double *nor
   return 8 * (PETSC_PI/2.0)*(alpha*B - beta*A);
   */
 }
+
 
 #undef __FUNCT__
 #define __FUNCT__ "calcNormalization2"

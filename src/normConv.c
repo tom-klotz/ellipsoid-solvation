@@ -130,7 +130,8 @@ PetscErrorCode NormConstantIntFixedERF(EllipsoidalSystem *e, PetscInt n, PetscIn
 #define __FUNCT__ "NormPlot"
 PetscErrorCode NormPlot()
 {
-  const PetscInt NUM_SOLUTIONS = 50;
+  const PetscInt MPFR_PREC = 128;
+  const PetscInt NUM_SOLUTIONS = 100;
   const PetscInt POINTS_MIN = 4;
   const PetscInt POINTS_STEP = 2;
   const PetscInt prec = 16;
@@ -149,12 +150,12 @@ PetscErrorCode NormPlot()
   PetscErrorCode ierr;
   PetscInt i;
   PetscEventPerfInfo info;
-  PetscInt n = 7;
-  PetscInt p = 9;
+  PetscInt n = 21;
+  PetscInt p = 22;
   PetscFunctionBegin;
 
-  
-  initEllipsoidalSystem(&e, a, b, c, 256);
+  mpfr_set_default_prec(4*MPFR_PREC);
+  initEllipsoidalSystem(&e, a, b, c, MPFR_PREC);
 
   /* calculate "exact" solution */
   mpfr_t exactsol;
