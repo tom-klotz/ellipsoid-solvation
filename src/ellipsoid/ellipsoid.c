@@ -2016,8 +2016,8 @@ PetscErrorCode normFunction1MPFR(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
   ierr = CalcLameMPFR((*ctx).e, n, p, *x, 1, 1, &top);
   mpfr_t *temp = &((*ctx).e->temp1);
   mpfr_mul(*temp, *x, *x, MPFR_RNDN);
-  mpfr_d_sub(*val, e->k2, *temp, MPFR_RNDN);
-  mpfr_sub_d(*temp, *temp, e->h2, MPFR_RNDN);
+  mpfr_sub(*val, e->hp_k2, *temp, MPFR_RNDN);
+  mpfr_sub(*temp, *temp, e->hp_h2, MPFR_RNDN);
   mpfr_mul(*val, *temp, *val, MPFR_RNDN);
   mpfr_mul_d(*val, *val, (double) denomSign, MPFR_RNDN); flopCount += 5;
   if(mpfr_get_d(*val, MPFR_RNDN) < 0 && fabs(mpfr_get_d(*val, MPFR_RNDN)) < tol) {
@@ -2063,8 +2063,8 @@ PetscErrorCode normFunction1(mpfr_t *x, mpfr_t *val, FuncInfo2 *ctx)
   calcLame((*ctx).e, n, p, mpfr_get_d(*x, MPFR_RNDN), 1, 1, &top);
   mpfr_t *temp = &((*ctx).e->temp1);
   mpfr_mul(*temp, *x, *x, MPFR_RNDN);
-  mpfr_d_sub(*val, e->k2, *temp, MPFR_RNDN);
-  mpfr_sub_d(*temp, *temp, e->h2, MPFR_RNDN);
+  mpfr_sub(*val, e->hp_k2, *temp, MPFR_RNDN);
+  mpfr_sub(*temp, *temp, e->hp_h2, MPFR_RNDN);
   mpfr_mul(*val, *temp, *val, MPFR_RNDN);
   mpfr_mul_d(*val, *val, (double) denomSign, MPFR_RNDN); flopCount += 5;
   if(mpfr_get_d(*val, MPFR_RNDN) < 0 && fabs(mpfr_get_d(*val, MPFR_RNDN)) < tol) {
