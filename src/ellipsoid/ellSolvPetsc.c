@@ -19,7 +19,7 @@ PetscErrorCode InitEllipsoidalAndConvertPoints(EllipsoidalSystem *e, PetscReal a
 
   ierr = PetscLogEventRegister("Init ellipsoidal system", 0, &initEvent);CHKERRQ(ierr);
   ierr = PetscLogEventBegin(initEvent, 0, 0, 0, 0);CHKERRQ(ierr);
-  ierr = initEllipsoidalSystem(e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(e, a, b, c, 32);CHKERRQ(ierr);
   ierr = PetscLogEventEnd(initEvent, 0, 0, 0, 0);CHKERRQ(ierr);
   
   PetscFunctionReturn(0);
@@ -152,7 +152,7 @@ PetscErrorCode CalcEllipsoidTester(PetscReal a, PetscReal b, PetscReal c, PetscR
 
 
   /* init ellipsoidal system */
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e, a, b, c, 32);CHKERRQ(ierr);
 
   /* initialize expansion vectors */
   ierr = HowMany(Nmax, &npsize);CHKERRQ(ierr);
@@ -247,7 +247,7 @@ PetscErrorCode CalcEllipsoidCoulombPotential(PetscReal a, PetscReal b, PetscReal
   PetscScalar *FnpValsArray;
   PetscFunctionBegin;
 
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e, a, b, c, 32);CHKERRQ(ierr);
 
   // create charge ellipsoidal vec and convert from xyz
   ierr = VecCreateSeq(PETSC_COMM_SELF, 3*nCharges, &chargeEll);CHKERRQ(ierr);
@@ -320,7 +320,7 @@ PetscErrorCode CalcEllipsoidSolvationPotential(PetscReal a, PetscReal b, PetscRe
   PetscFunctionBegin;
 
   
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e, a, b, c, 32);CHKERRQ(ierr);
 
   // calculate the number of interior and exterior points
   ierr = VecGetArrayRead(targetXYZ, &targetXYZArray);CHKERRQ(ierr);

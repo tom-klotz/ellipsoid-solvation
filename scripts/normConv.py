@@ -58,7 +58,7 @@ plt.rcParams['ytick.major.width'] = 2
 plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='blue')
 plt.semilogy(WP3[:,0], WP3[:,2], linewidth=3, linestyle='-', color='green')
 plt.semilogy(WP2[:,0], WP2[:,2], linewidth=3, linestyle='-', color='red')
-plt.title(r'Convergence for $\gamma_{21}^{22}$', size=18)
+plt.title(r'Convergence for $\gamma_{7}^{4}$', size=18)
 plt.xlabel('quadrature nodes per integral', size=14)
 plt.ylabel('relative error', size=14)
 plt.savefig('figs/pointpreccomp.eps', format='eps', dpi=2000)
@@ -74,7 +74,7 @@ plt.semilogy(INT1[:,0], INT1[:,1], linewidth=1.5, linestyle='-', marker='s', mar
 plt.semilogy(INT2[:,0], INT2[:,1], linewidth=1.5, linestyle='-', marker='^', markersize=8, markevery=2, markerfacecolor='none', markeredgewidth=1, color='black')
 plt.semilogy(INT3[:,0], INT3[:,1], linewidth=1.5, linestyle=':', color='black')#marker='d', markersize=8, markevery=3, markerfacecolor='none', markeredgewidth=1, color='black')
 plt.semilogy(INT4[:,0], INT4[:,1], linewidth=1.5, linestyle='--', color='black')#marker='x', markersize=8, markevery=3, markerfacecolor='none', markeredgewidth=1, color='black')
-plt.title(r'Tanh-sinh convergence for $\gamma_{21}^{22}$ (each integral)', size=18)
+plt.title(r'Tanh-sinh convergence for $\gamma_{7}^{4}$ (each integral)', size=18)
 plt.xlabel('tanh-sinh nodes per integrand', size=14)
 plt.ylabel('relative error', size=14)
 plt.legend(['I_4', 'I_2', 'I_1', 'I_3'])
@@ -87,8 +87,8 @@ plt.rcParams['xtick.major.size'] = 4.5
 plt.rcParams['xtick.major.width'] = 2
 plt.rcParams['ytick.major.size'] = 4.5
 plt.rcParams['ytick.major.width'] = 2
-plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='blue')
-plt.title(r'Tanh-sinh convergence for $\gamma_{21}^{22}$', size=18)
+plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='black')
+plt.title(r'Tanh-sinh convergence for $\gamma_{7}^{4}$', size=18)
 plt.xlabel('tanh-sinh nodes per integral', size=14)
 plt.ylabel('relative error', size=14)
 plt.savefig('figs/pointprec.eps', format='eps', dpi=2000)

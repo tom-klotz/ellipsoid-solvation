@@ -64,7 +64,7 @@ PetscErrorCode main(int argc, char **argv)
   PetscErrorCode ierr;
   
   const PetscInt MPFR_PREC = 64;
-  const PetscInt NUM_SOLUTIONS = 100;
+  const PetscInt NUM_SOLUTIONS = 50;
   const PetscInt POINTS_MIN = 4;
   const PetscInt POINTS_STEP = 2;
   const PetscInt prec = 16;
@@ -82,8 +82,8 @@ PetscErrorCode main(int argc, char **argv)
   EllipsoidalSystem e;
   PetscInt i;
   PetscEventPerfInfo info;
-  PetscInt n = 21;
-  PetscInt p = 22;
+  PetscInt n = 7;
+  PetscInt p = 4;
   
   PetscFunctionBeginUser;
 
@@ -118,7 +118,6 @@ PetscErrorCode main(int argc, char **argv)
     ierr = PetscLogEventEnd(flopCounts[i], 0, 0, 0, 0);CHKERRQ(ierr);
     printf("new norm constant: %15.15f\n", solutions[i]);
   }
-
   /* calculate errors */
   for(i=0; i<NUM_SOLUTIONS; ++i) {
     //errors[i] = PetscAbsReal((solExact - solutions[i])/solExact);
@@ -167,8 +166,6 @@ PetscErrorCode main(int argc, char **argv)
   fclose(fp2);
   fclose(fp3);
   mpfr_clear(solExact);
-
-
 
   ierr = PetscFinalize();
 
