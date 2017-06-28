@@ -49,19 +49,19 @@ plt.savefig('figs/flopprec.eps', format='eps', dpi=2000)
 
 
 fig2 = plt.figure(1)
-fig2.set_size_inches(7,5, forward=True)
+fig2.set_size_inches(5,3.5, forward=True)
 plt.rcParams.update({'font.size': 12})
 plt.rcParams['xtick.major.size'] = 4.5
 plt.rcParams['xtick.major.width'] = 2
 plt.rcParams['ytick.major.size'] = 4.5
 plt.rcParams['ytick.major.width'] = 2
-plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='blue')
-plt.semilogy(WP3[:,0], WP3[:,2], linewidth=3, linestyle='-', color='green')
-plt.semilogy(WP2[:,0], WP2[:,2], linewidth=3, linestyle='-', color='red')
-plt.title(r'Convergence for $\gamma_{7}^{4}$', size=18)
+plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='black', label='tanh-sinh')
+plt.semilogy(WP3[:,0], WP3[:,2], linewidth=3, linestyle='--', color='black', label='erf')
+plt.semilogy(WP2[:,0], WP2[:,2], linewidth=3, linestyle=':', color='black', label='tanh')
+plt.title(r'Convergence for $\gamma_{3}^{5}$', size=18)
 plt.xlabel('quadrature nodes per integral', size=14)
 plt.ylabel('relative error', size=14)
-plt.savefig('figs/pointpreccomp.eps', format='eps', dpi=2000)
+plt.savefig('figs/pointpreccomp.eps', format='eps', transparent=True, dpi=2000)
 
 fig3 = plt.figure(2)
 fig3.set_size_inches(7,5, forward=True)
@@ -78,7 +78,7 @@ plt.title(r'Tanh-sinh convergence for $\gamma_{7}^{4}$ (each integral)', size=18
 plt.xlabel('tanh-sinh nodes per integrand', size=14)
 plt.ylabel('relative error', size=14)
 plt.legend(['I_4', 'I_2', 'I_1', 'I_3'])
-plt.savefig('figs/intConvComp.eps', format='eps', dpi=2000)
+plt.savefig('figs/intConvComp.eps', format='eps', transparent=True, dpi=2000)
 
 fig4 = plt.figure(3)
 fig4.set_size_inches(7,5, forward=True)
@@ -87,7 +87,7 @@ plt.rcParams['xtick.major.size'] = 4.5
 plt.rcParams['xtick.major.width'] = 2
 plt.rcParams['ytick.major.size'] = 4.5
 plt.rcParams['ytick.major.width'] = 2
-plt.semilogy(WP[:,0],WP[:,2], linewidth=3, linestyle='-', color='black')
+plt.semilogy(WP[:,0],WP[:,2], linewidth=2, linestyle='-', color='black')
 plt.title(r'Tanh-sinh convergence for $\gamma_{7}^{4}$', size=18)
 plt.xlabel('tanh-sinh nodes per integral', size=14)
 plt.ylabel('relative error', size=14)

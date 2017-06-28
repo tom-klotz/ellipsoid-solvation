@@ -56,10 +56,9 @@ PetscErrorCode NormConstantIntFixed(EllipsoidalSystem *e, PetscInt n, PetscInt p
   PetscFunctionReturn(0);
 }
 
-
 #undef __FUNCT__
-#define __FUNCT__ "main"
-PetscErrorCode main(int argc, char **argv)
+#define __FUNCT_ "normConvergence"
+PetscErrorCode normConvergence(PetscInt n, PetscInt p)
 {
   PetscErrorCode ierr;
   
@@ -82,13 +81,11 @@ PetscErrorCode main(int argc, char **argv)
   EllipsoidalSystem e;
   PetscInt i;
   PetscEventPerfInfo info;
-  PetscInt n = 7;
-  PetscInt p = 4;
+  //PetscInt n = 7;
+  //PeatscInt p = 4;
   
-  PetscFunctionBeginUser;
+  PetscFunctionBegin;
 
-  ierr = PetscInitialize(&argc, &argv, NULL, NULL);CHKERRQ(ierr);
-  ierr = PetscLogDefaultBegin();CHKERRQ(ierr);
 
   mpfr_set_default_prec(4*MPFR_PREC);
   initEllipsoidalSystem(&e, a, b, c, MPFR_PREC);
@@ -167,6 +164,22 @@ PetscErrorCode main(int argc, char **argv)
   fclose(fp3);
   mpfr_clear(solExact);
 
+  PetscFunctionReturn(0);
+
+}
+
+#undef __FUNCT__
+#define __FUNCT__ "main"
+PetscErrorCode main(int argc, char **argv)
+{
+  PetscErrorCode ierr;
+  PetscFunctionBeginUser;
+
+  ierr = PetscInitialize(&argc, &argv, NULL, NULL);CHKERRQ(ierr);
+  ierr = PetscLogDefaultBegin();CHKERRQ(ierr);
+
+  ierr = normConvergence(7,4);CHKERRQ(ierr);
+  
   ierr = PetscFinalize();
 
   PetscFunctionReturn(0);
