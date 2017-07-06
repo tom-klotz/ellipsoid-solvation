@@ -54,7 +54,7 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->RmaxN = 0;
 
   //default init Romain constants to order 40
-  int N = 50;
+  int N = 56;
   
   s->a = a;
   s->b = b;
@@ -1589,20 +1589,20 @@ PetscErrorCode initRomainConstsToOrderN(EllipsoidalSystem *e, int N)
     e->Rconsts[n] = (double**) malloc(sizeof(double*)*4);
     e->RconstsMPFR[n] = (mpfr_t**) malloc(sizeof(mpfr_t*)*4);
     //e->Rconsts[n][0] = getLameCoefficientMatrix(e, 'K', n, NULL);
-    ierr = getLameCoefficientMatrixSymmetric(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
+    ierr = getLameCoefficientMatrix(e, 'K', n, NULL, e->Rconsts[n]+0);CHKERRQ(ierr);
     ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'K', n, NULL, e->RconstsMPFR[n]+0);CHKERRQ(ierr);
     //PetscErrorCode getLameCoefficientMatrixSymmetricMPFR(struct EllipsoidalSystem *s, char t, PetscInt n, PetscInt* const mat_size, mpfr_t **mat)
     //printf("wowze\n");
     if(n != 0) {
       //e->Rconsts[n][1] = getLameCoefficientMatrix(e, 'L', n, NULL);
-      ierr = getLameCoefficientMatrixSymmetric(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrix(e, 'L', n, NULL, e->Rconsts[n]+1);CHKERRQ(ierr);
       ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'L', n, NULL, e->RconstsMPFR[n]+1);CHKERRQ(ierr);
       //e->Rconsts[n][2] = getLameCoefficientMatrix(e, 'M', n, NULL);
-      ierr = getLameCoefficientMatrixSymmetric(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
+      ierr = getLameCoefficientMatrix(e, 'M', n, NULL, e->Rconsts[n]+2);CHKERRQ(ierr);
       ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'M', n, NULL, e->RconstsMPFR[n]+2);CHKERRQ(ierr);
       if(n != 1) {
 	//e->Rconsts[n][3] = getLameCoefficientMatrix(e, 'N', n, NULL);
-	ierr = getLameCoefficientMatrixSymmetric(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
+	ierr = getLameCoefficientMatrix(e, 'N', n, NULL, e->Rconsts[n]+3);CHKERRQ(ierr);
 	ierr = getLameCoefficientMatrixSymmetricMPFR(e, 'N', n, NULL, e->RconstsMPFR[n]+3);CHKERRQ(ierr);
       }
     }

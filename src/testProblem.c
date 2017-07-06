@@ -793,8 +793,14 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
   ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd1);CHKERRQ(ierr);
   ierr = PetscRandomCreate(PETSC_COMM_WORLD, &rnd2);CHKERRQ(ierr);
   ierr = PetscRandomSetInterval(rnd1, .1, 1.0);CHKERRQ(ierr);
-  ierr = PetscRandomSetInterval(rnd2, .9, 1.0);CHKERRQ(ierr);
+  ierr = PetscRandomSetInterval(rnd2, .8, .9);CHKERRQ(ierr);
   ierr = PetscRandomSetFromOptions(rnd1);CHKERRQ(ierr);
+  ierr = PetscRandomSetFromOptions(rnd2);CHKERRQ(ierr);
+  srand(time(NULL));
+  ierr = PetscRandomSetSeed(rnd1, rand());
+  ierr = PetscRandomSetSeed(rnd2, rand());
+  ierr = PetscRandomSeed(rnd1);CHKERRQ(ierr);
+  ierr = PetscRandomSeed(rnd2);CHKERRQ(ierr);
 
   ierr = VecGetSize(xyz, &nvals);CHKERRQ(ierr);
   nvals = nvals/3;
@@ -814,16 +820,24 @@ PetscErrorCode RandomEllipsoidPoints(PetscReal a, PetscReal b, PetscReal c, Vec 
     
     x = a*r*PetscCosReal(theta)*PetscSinReal(phi);
     y = b*r*PetscSinReal(theta)*PetscSinReal(phi);
-    z = c*r*PetscCosReal(theta);
+    z = c*r*PetscCosReal(phi);
 
     xyzArray[3*i+0] = x;
     xyzArray[3*i+1] = y;
     xyzArray[3*i+2] = z;
     if(nvals==1) {
-      xyzArray[3*i+0] = 2.02;
-      xyzArray[3*i+1] = -0.4;
-      xyzArray[3*i+2] = -0.463;
+      xyzArray[3*i+0] = .1;
+      xyzArray[3*i+1] = .2;
+      xyzArray[3*i+2] = .4;
     }
+    /*if(nvals==2) {
+      xyzArray[0] = .1;
+      xyzArray[1] = .2;
+      xyzArray[2] = .4;
+      xyzArray[3] = .1;
+      xyzArray[4] = .2;
+      xyzArray[5] = .3;
+      }*/
   }
   ierr = VecRestoreArray(xyz, &xyzArray);CHKERRQ(ierr);
   PetscFunctionReturn(0);
@@ -996,7 +1010,7 @@ PetscErrorCode WorkPrecExample()
   
   const PetscInt NUM_SOLUTIONS = 45;
   const PetscInt EXACT_NUM   = NUM_SOLUTIONS+10;
-  const PetscInt NUM_CHARGES = 5;
+  const PetscInt NUM_CHARGES = 4;
   Vec srcXYZ, srcMag;
   Vec potential[NUM_SOLUTIONS];
   Vec potExact;
@@ -1028,6 +1042,8 @@ PetscErrorCode WorkPrecExample()
   ierr = VecCreateSeq(PETSC_COMM_SELF, 3*NUM_CHARGES, &srcXYZ);CHKERRQ(ierr);
   ierr = VecCreateSeq(PETSC_COMM_SELF,   NUM_CHARGES, &srcMag);CHKERRQ(ierr);
   ierr = RandomEllipsoidPoints(a, b, c, srcXYZ);CHKERRQ(ierr);
+  printf("######\nXYZ\n#######\n");
+  ierr = VecView(srcXYZ, PETSC_VIEWER_STDOUT_SELF);CHKERRQ(ierr);
   ierr = RandomMag(srcMag);CHKERRQ(ierr);
   ierr = VecSet(srcMag, 1.0);CHKERRQ(ierr);
   //ierr = VecScale(srcMag, 1./NUM_CHARGES);CHKERRQ(ierr); //scale charge magnitudes so total energy is more normalized
@@ -1072,8 +1088,9 @@ PetscErrorCode WorkPrecExample()
     errVal = PetscAbsReal((solutionArray[i] - exact)/(exact));
     ierr = PetscLogEventGetPerfInfo(PETSC_DETERMINE, events[i], &info);CHKERRQ(ierr);
     fprintf(fp, "%4.4e %4.4e\n", info.flops, errVal);
-    printf("exact: %15.15f\n", solutionArray[i]);
+    printf("approx: %15.15f\n", solutionArray[i]);
   }
+  printf("exact: %15.15f\n", exact);
   fclose(fp);
   ierr = VecRestoreArray(solution, &solutionArray);CHKERRQ(ierr);
 

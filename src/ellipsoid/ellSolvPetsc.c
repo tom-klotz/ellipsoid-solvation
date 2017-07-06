@@ -125,6 +125,7 @@ PetscErrorCode CalcEllipsoidFreeEnergy(EllipsoidalSystem *e, PetscReal eps1, Pet
   ierr = VecGetArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
   /* calculate free energy */
   for(PetscInt k=0; k < nSrc; ++k) {
+    printf("sum[d] = %15.15f\n", srcMagArray[k]*tarSolArray[k]);
     *freeE += srcMagArray[k]*tarSolArray[k];
   }
   ierr = VecRestoreArrayRead(srcMag, &srcMagArray);CHKERRQ(ierr);
