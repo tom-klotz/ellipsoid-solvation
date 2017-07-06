@@ -34,6 +34,7 @@ INT4 = loadtxt('out/normInt4Prec.txt', skiprows=1)
 #E3INT4 = loadtxt('out/e3normInt4Prec.txt', skiprows=1)
 
 
+
 fig1 = plt.figure(0)
 fig1.set_size_inches(7,5, forward=True)
 plt.rcParams.update({'font.size': 12})
@@ -87,7 +88,7 @@ plt.rcParams['xtick.major.size'] = 4.5
 plt.rcParams['xtick.major.width'] = 2
 plt.rcParams['ytick.major.size'] = 4.5
 plt.rcParams['ytick.major.width'] = 2
-plt.semilogy(WP[:,0],WP[:,2], linewidth=2, linestyle='-', color='black')
+plt.semilogy(WP[0:37,0],WP[0:37,2], linewidth=2, linestyle='-', color='black')
 plt.title(r'Tanh-sinh convergence for $\gamma_{7}^{4}$', size=18)
 plt.xlabel('tanh-sinh nodes per integral', size=14)
 plt.ylabel('relative error', size=14)

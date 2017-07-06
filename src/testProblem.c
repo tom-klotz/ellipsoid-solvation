@@ -138,7 +138,7 @@ void runTest1() {
   const int nCharges = 1;
 
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0);
+  initEllipsoidalSystem(&e, 3.0, 2.0, 1.0, 64);
 
   //grid dimensions
   int nx = 10;
@@ -308,7 +308,7 @@ PetscErrorCode RunArg()
 
   //initialize ellipsoidal system
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
   
   //set charge positions and calculation points to be the same
   Point *solPoints = (Point*) malloc(sizeof(Point)*npts);
@@ -416,7 +416,7 @@ PetscErrorCode RunArgWorkPrec()
 
   //initialize ellipsoidal system
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
   
   //set charge positions and calculation points to be the same
   Point *solPoints = (Point*) malloc(sizeof(Point)*npts);
@@ -521,7 +521,7 @@ PetscErrorCode RunArgTester()
 
   //initialize ellipsoidal system
   EllipsoidalSystem e;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
   
   //set charge positions and calculation points to be the same
   Point *solPoints = (Point*) malloc(sizeof(Point)*npts);
@@ -889,7 +889,7 @@ PetscErrorCode SphereLimitExample()
     b = 1.0 + (delta/5.0);
     c = 1.0 + (delta/10.0);
     /* init ellipsoidal system */
-    ierr = initEllipsoidalSystem(ells+i, a, b, c);CHKERRQ(ierr);
+    ierr = initEllipsoidalSystem(ells+i, a, b, c, 64);CHKERRQ(ierr);
     /* initialize xyz and solution vectors */
     ierr = VecCreateSeq(PETSC_COMM_SELF, 3, srcXYZ+i);CHKERRQ(ierr);
     ierr = VecCreateSeq(PETSC_COMM_SELF, 1, srcMag+i);CHKERRQ(ierr);
@@ -956,7 +956,7 @@ PetscErrorCode ChargeFlopsExample(PetscInt Nmax)
   const PetscReal b = 2.0;
   const PetscReal c = 1.0;
 
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e, a, b, c, 64);CHKERRQ(ierr);
   
   /* create the vector with charge numbers to use */
   for(i=0; i < NUM_SOLUTIONS; ++i) {
@@ -1022,7 +1022,7 @@ PetscErrorCode WorkPrecExample()
   const PetscReal b = 2.0;
   const PetscReal c = 1.0;
 
-  ierr = initEllipsoidalSystem(&e, a, b, c);CHKERRQ(ierr);
+  ierr = initEllipsoidalSystem(&e, a, b, c, 64);CHKERRQ(ierr);
   
   /* create charge vectors and initialize with random values */
   ierr = VecCreateSeq(PETSC_COMM_SELF, 3*NUM_CHARGES, &srcXYZ);CHKERRQ(ierr);
@@ -1521,7 +1521,7 @@ PetscErrorCode testLame()
   signn = 1;
   
   a = 3.0; b = 2.0; c = 1.0;
-  initEllipsoidalSystem(&e, a, b, c);
+  initEllipsoidalSystem(&e, a, b, c, 64);
   FILE *fp = fopen("newellout.txt", "w");
   Nmax = 6;
   for(n=0; n < Nmax; ++n) {
@@ -1549,7 +1549,7 @@ PetscErrorCode main( int argc, char **argv )
   ierr = PetscLogDefaultBegin(); CHKERRQ(ierr);  
 
 
-  ierr = EllVsSphConvergence();CHKERRQ(ierr);
+  //ierr = EllVsSphConvergence();CHKERRQ(ierr);
   
   //testSphericalCoordinates();
   //runTest1();
@@ -1582,7 +1582,7 @@ PetscErrorCode main( int argc, char **argv )
   //ierr = RunArg();
   //ierr = GridAnimation();CHKERRQ(ierr);
   //ierr = ChargeFlopsExample(10);CHKERRQ(ierr);
-  //ierr = WorkPrecExample();CHKERRQ(ierr);
+  ierr = WorkPrecExample();CHKERRQ(ierr);
   //ierr = SphereLimitExample();CHKERRQ(ierr);
 
 

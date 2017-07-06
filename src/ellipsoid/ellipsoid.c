@@ -54,7 +54,7 @@ PetscErrorCode initEllipsoidalSystem(struct EllipsoidalSystem *s, double a, doub
   s->RmaxN = 0;
 
   //default init Romain constants to order 40
-  int N = 25;
+  int N = 50;
   
   s->a = a;
   s->b = b;

@@ -63,7 +63,7 @@ PetscErrorCode normConvergence(PetscInt n, PetscInt p)
   PetscErrorCode ierr;
   
   const PetscInt MPFR_PREC = 64;
-  const PetscInt NUM_SOLUTIONS = 50;
+  const PetscInt NUM_SOLUTIONS = 80;
   const PetscInt POINTS_MIN = 4;
   const PetscInt POINTS_STEP = 2;
   const PetscInt prec = 16;
@@ -178,7 +178,7 @@ PetscErrorCode main(int argc, char **argv)
   ierr = PetscInitialize(&argc, &argv, NULL, NULL);CHKERRQ(ierr);
   ierr = PetscLogDefaultBegin();CHKERRQ(ierr);
 
-  ierr = normConvergence(7,4);CHKERRQ(ierr);
+  ierr = normConvergence(21,22);CHKERRQ(ierr);
   
   ierr = PetscFinalize();
 
